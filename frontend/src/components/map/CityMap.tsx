@@ -157,33 +157,64 @@ const BlockTints = memo(function BlockTints({ grid, tints, selected }: {
   );
 });
 
-/** Clicks and hover are resolved by grid arithmetic — no 225 interactive shapes. */
+const escapeHtml = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+
+/**
+ * Clicks and hover are resolved by grid arithmetic — no 225 interactive shapes. The hover card is
+ * one Leaflet tooltip that is moved to the pointer on every mouse move, so it always sits where you
+ * are pointing (a tooltip bound to the outline would stay at the first block's position). React
+ * only re-renders when the pointer crosses into another block.
+ */
 function GridEvents({ grid, zones, onSelectZone }: { grid: Grid; zones: ZoneState[]; onSelectZone: (id: string) => void }) {
-  const [hover, setHover] = useState<string | null>(null);
+  const map = useMap();
+  const [hoverId, setHoverId] = useState<string | null>(null);
+  const tip = useRef<L.Tooltip | null>(null);
+
+  useEffect(() => {
+    tip.current = L.tooltip({ className: "cp-tooltip", direction: "top", offset: [0, -12], opacity: 1 });
+    return () => {
+      tip.current?.remove();
+      tip.current = null;
+    };
+  }, [map]);
+
+  const hide = () => {
+    tip.current?.remove();
+    setHoverId(null);
+  };
   useMapEvents({
     click: (e) => {
       const id = blockAt(grid, e.latlng.lat, e.latlng.lng);
       if (id) onSelectZone(id);
     },
     mousemove: (e) => {
-      if (SMALL) return;
+      if (SMALL || !tip.current) return;
       const id = blockAt(grid, e.latlng.lat, e.latlng.lng);
-      setHover((cur) => (cur === id ? cur : id));
+      if (!id) return hide();
+      tip.current.setLatLng(e.latlng);
+      setHoverId((cur) => (cur === id ? cur : id));
     },
-    mouseout: () => setHover(null),
-    zoomstart: () => setHover(null),
+    mouseout: hide,
+    zoomstart: hide,
   });
-  const z = hover ? zones.find((x) => x.id === hover) : null;
+
+  const z = hoverId ? zones.find((x) => x.id === hoverId) : null;
+  useEffect(() => {
+    const t = tip.current;
+    if (!t) return;
+    if (!z) {
+      t.remove();
+      return;
+    }
+    t.setContent(`<strong>${escapeHtml(z.short_name)}</strong> <span style="color:#94a3b8">· ${z.id}</span><br>`
+      + `<span style="color:${MAP_STATUS[z.status]}">${STATUS_META[z.status].word}</span>`);
+    if (!map.hasLayer(t)) t.addTo(map);
+  }, [map, z?.id, z?.short_name, z?.status]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (!z) return null;
   return (
-    <Rectangle bounds={blockBounds(grid, z.id)} interactive={false}
-      pathOptions={{ color: "#e8eef5", weight: 1, opacity: 0.55, fill: false }}>
-      <Tooltip className="cp-tooltip" permanent direction="top" offset={[0, -4]}>
-        <strong>{z.short_name}</strong> <span style={{ color: "#94a3b8" }}>· {z.id}</span>
-        <br />
-        <span style={{ color: MAP_STATUS[z.status] }}>{STATUS_META[z.status].word}</span>
-      </Tooltip>
-    </Rectangle>
+    <Rectangle key={z.id} bounds={blockBounds(grid, z.id)} interactive={false}
+      pathOptions={{ color: "#e8eef5", weight: 1, opacity: 0.55, fill: false }} />
   );
 }
 
