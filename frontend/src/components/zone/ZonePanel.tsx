@@ -1,9 +1,9 @@
 import { Bot, CircleHelp, FileWarning, Info, X } from "lucide-react";
 import { useCallback, useEffect, useRef } from "react";
 import { usePolling } from "../../hooks/usePolling";
-import { api } from "../../services/api";
-import type { FeedHealth, ZoneState } from "../../types";
+import type { FeedHealth, ZoneDetail, ZoneState } from "../../types";
 import { agoText, clockTime } from "../../utils/format";
+import { isHealthyFeed } from "../../utils/status";
 import { ExplanationBlock, SourceTag } from "../SummaryPanel";
 import { StatusBadge } from "../ui/StatusBadge";
 import { RelationshipCard, RiskCard } from "./InsightCards";
@@ -25,6 +25,8 @@ interface Props {
   zone: ZoneState;
   feeds: FeedHealth[];
   now: number;
+  /** Where zone detail comes from — the live API, or a replay frame. */
+  loadDetail: (zoneId: string) => Promise<ZoneDetail>;
   onClose: () => void;
 }
 
@@ -41,8 +43,8 @@ function Section({ title, children, hint }: { title: string; children: React.Rea
 }
 
 /** The investigation layer: why might this be happening, which signals support it, how unusual, what changed. */
-export function ZonePanel({ zone, feeds, now, onClose }: Props) {
-  const fetcher = useCallback(() => api.zone(zone.id), [zone.id]);
+export function ZonePanel({ zone, feeds, now, loadDetail, onClose }: Props) {
+  const fetcher = useCallback(() => loadDetail(zone.id), [loadDetail, zone.id]);
   const { data: detail } = usePolling(fetcher, 3000);
   const closeRef = useRef<HTMLButtonElement>(null);
   const d = detail?.zone.id === zone.id ? detail : null;
@@ -54,7 +56,7 @@ export function ZonePanel({ zone, feeds, now, onClose }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, [zone.id, onClose]);
 
-  const degraded = feeds.filter((f) => f.status !== "LIVE" && f.status !== "SIMULATED");
+  const degraded = feeds.filter((f) => !isHealthyFeed(f.status));
   const links = [...zone.relationships].sort((a, b) => b.score - a.score);
 
   return (
@@ -178,7 +180,7 @@ export function ZonePanel({ zone, feeds, now, onClose }: Props) {
             {feeds.map((f) => (
               <li key={f.id} className="flex items-center gap-2">
                 <span className="w-32 truncate text-[var(--muted)]">{f.label}</span>
-                <span className="font-semibold" style={{ color: f.status === "LIVE" || f.status === "SIMULATED" ? "var(--ok)" : "var(--warn)" }}>
+                <span className="font-semibold" style={{ color: isHealthyFeed(f.status) ? "var(--ok)" : "var(--warn)" }}>
                   {f.status}
                 </span>
                 <span className="ml-auto text-[var(--faint)]">{agoText(f.last_success_at, now)}</span>

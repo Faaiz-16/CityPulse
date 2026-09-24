@@ -8,9 +8,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from app.geo.zones import ZONE_IDS, ZONES
-from app.schemas import CityState
+from app.schemas import HEALTHY_FEED_STATUSES, CityState
 from app.services.feed_manager import FAULT_MODES, FEEDS_BY_ID
 from app.services.pipeline import CityPulse
+from app.simulation.replay import ReplayUnavailable
 
 router = APIRouter(prefix="/api")
 
@@ -40,7 +41,7 @@ def health(request: Request):
     if p is None or p.state is None:
         return {"status": "starting"}
     age = (datetime.now(UTC) - p.state.generated_at).total_seconds()
-    degraded_feeds = [f.id for f in p.state.feeds if f.status.value not in ("LIVE", "SIMULATED")]
+    degraded_feeds = [f.id for f in p.state.feeds if f.status not in HEALTHY_FEED_STATUSES]
     pipeline_ok = age < max(15, 5 * p.s.tick_seconds) and p.last_tick_error is None
     status = "ok" if pipeline_ok and p.db.ok and not degraded_feeds else "degraded"
     return {
@@ -189,3 +190,31 @@ def simulation_feed_fault(body: FaultRequest, p: CityPulse = Depends(get_pipelin
     p.set_feed_fault(body.feed_id, body.mode)
     p.tick()
     return {"ok": True, "message": f"{FEEDS_BY_ID[body.feed_id].label}: fault mode set to {body.mode}."}
+
+
+# ---------------------------------------------------------------------- replay
+# The client owns the playhead: it asks for frame i. Frames are computed once and cached.
+
+def _replay_or_error(fn):
+    try:
+        return fn()
+    except ReplayUnavailable as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except IndexError as exc:
+        raise HTTPException(404, "Replay frame out of range.") from exc
+
+
+@router.get("/replay")
+def replay_meta(p: CityPulse = Depends(get_pipeline)):
+    return _replay_or_error(p.replay.meta)
+
+
+@router.get("/replay/frames/{index}", response_model=CityState)
+def replay_frame(index: int, p: CityPulse = Depends(get_pipeline)):
+    return _replay_or_error(lambda: p.replay.frame(index).state)
+
+
+@router.get("/replay/frames/{index}/zones/{zone_id}")
+def replay_zone(index: int, zone_id: str, p: CityPulse = Depends(get_pipeline)):
+    _zone_or_404(zone_id)
+    return _replay_or_error(lambda: p.replay.zone_detail(index, zone_id))

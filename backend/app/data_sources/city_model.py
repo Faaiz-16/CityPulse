@@ -104,6 +104,9 @@ class Effect:
     fade_s: float = 60.0
     intensity: float = 1.0
     label: str = ""
+    # Downstream lags are tuned in seconds for a snappy live demo; a recorded real-world
+    # event unfolds over minutes, so history effects stretch the lags by this factor.
+    lag_scale: float = 1.0
 
     @property
     def end(self) -> datetime:
@@ -111,7 +114,7 @@ class Effect:
 
     def envelope(self, t: datetime, lag_s: float = 0.0) -> float:
         """0 → 1 ramp, hold at 1, fade back to 0. Lag shifts the whole curve later."""
-        s = (t - self.start).total_seconds() - lag_s
+        s = (t - self.start).total_seconds() - lag_s * self.lag_scale
         if s <= 0:
             return 0.0
         if s < self.ramp_s:

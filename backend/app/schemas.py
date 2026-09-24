@@ -41,6 +41,11 @@ class FeedStatus(StrEnum):
     DELAYED = "DELAYED"
     STALE = "STALE"
     UNAVAILABLE = "UNAVAILABLE"
+    ARCHIVE = "ARCHIVE"  # recorded data being replayed (historical replay mode)
+
+
+# Statuses that mean "this feed is delivering usable data as designed".
+HEALTHY_FEED_STATUSES = frozenset({FeedStatus.LIVE, FeedStatus.SIMULATED, FeedStatus.ARCHIVE})
 
 
 class ZoneStatus(StrEnum):

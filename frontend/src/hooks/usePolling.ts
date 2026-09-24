@@ -36,8 +36,12 @@ export function usePolling<T>(fetcher: (() => Promise<T>) | null, intervalMs: nu
   }, []);
 
   useEffect(() => {
-    setData(null);
-    if (!fetcher) return;
+    // Keep showing the previous data while the new target loads (avoids flicker when
+    // e.g. a replay frame advances); callers check the data matches what they asked for.
+    if (!fetcher) {
+      setData(null);
+      return;
+    }
     run();
     const id = window.setInterval(run, intervalMs);
     return () => window.clearInterval(id);

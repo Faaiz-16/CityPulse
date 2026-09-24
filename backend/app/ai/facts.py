@@ -7,7 +7,7 @@ computed and checked. That is the main defence against invented events or number
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from app.schemas import FeedHealth, FeedStatus, ZoneState, ZoneStatus
+from app.schemas import HEALTHY_FEED_STATUSES, FeedHealth, ZoneState, ZoneStatus
 
 _SEV_RANK = {"none": 0, "low": 1, "moderate": 2, "high": 3}
 _STATUS_RANK = {ZoneStatus.RED: 0, ZoneStatus.YELLOW: 1, ZoneStatus.GREEN: 2}
@@ -44,7 +44,7 @@ def build_facts(zones: list[ZoneState], feeds: list[FeedHealth], now: datetime, 
         ],
         "degraded_feeds": [
             {"feed": f.label, "status": f.status.value, "note": f.message}
-            for f in feeds if f.status not in (FeedStatus.LIVE, FeedStatus.SIMULATED)
+            for f in feeds if f.status not in HEALTHY_FEED_STATUSES
         ],
     }
 

@@ -69,6 +69,8 @@ Full details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   climbing — *before* it crosses its threshold.
 - **Feed health.** LIVE · SIMULATED · FALLBACK · DELAYED · STALE · UNAVAILABLE, with age and
   rejected-record counts.
+- **Historical replay.** Scrub through a recorded storm minute by minute; the same engine and
+  agent detect it on past data, with key moments you can jump to. Clearly labelled as recorded.
 - **Demo controls.** One-click full scenario, individual events per zone, and fault injection
   (outage / delay / malformed) per feed.
 
@@ -82,7 +84,7 @@ Full details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 | Live, glanceable dashboard or map | `frontend/` — map-first UI, 3-second refresh |
 | Plain-language summary | `backend/app/ai/` — templates + optional validated LLM |
 | *Optional:* threshold alerting | Monitoring agent (`backend/app/agent/`) |
-| *Optional:* historical replay | Recorded storm in the seeded history (replay UI: planned) |
+| *Optional:* historical replay | Recorded storm replayed minute by minute through the same engine and agent (`backend/app/simulation/replay.py`) |
 | Degrade gracefully | Feed manager fallbacks + "cannot assess" reporting |
 | Privacy | Personal fields dropped at ingestion; anonymous reports only |
 | Correlation ≠ causation | Fixed hedged wording, causal-language validator, separate "not a confirmed cause" labels |
@@ -155,6 +157,9 @@ Click **Demo controls** (top-right of the map):
 3. **Simulate a feed failure**: set any feed to Outage, Delayed or Malformed and watch its status
    chip, the alerts and the summary respond.
 4. **Normal state** resets everything.
+5. **Replay storm** (top-right of the map) — replays last evening's recorded storm through the
+   same pipeline. Play, pause, step, change speed, or click a key moment such as
+   *"18:25 Possible relationship found"*. **Back to live** returns to the live view.
 
 ## Fallback architecture (short version)
 
@@ -178,6 +183,7 @@ Click **Demo controls** (top-right of the map):
 | GET | `/api/summary`, `/api/alerts`, `/api/agent` | Explanations, alerts, agent trace |
 | GET | `/api/sources/status`, `/api/sensors`, `/api/timeline` | Feed health, IoT layer, heat-map |
 | POST | `/api/simulation/event`, `/reset`, `/scenario`, `/feed-fault` | Demo controls |
+| GET | `/api/replay`, `/api/replay/frames/{i}`, `/api/replay/frames/{i}/zones/{id}` | Historical replay |
 
 Interactive docs at <http://127.0.0.1:8000/docs> while the backend runs.
 
@@ -192,10 +198,10 @@ backend/
     analysis/       baselines, anomalies, correlation, risk, engine
     ai/             fact sheet, templates, LLM client, grounding validator
     agent/          monitoring agent
-    simulation/     demo events, scenario, synthetic history
+    simulation/     demo events, scenario, synthetic history, historical replay
     services/       pipeline, feed manager, rolling store, persistence
     geo/            demo zones and geometry
-  tests/            89 tests (normalization, analysis, resilience, AI, agent, API)
+  tests/            98 tests (normalization, analysis, resilience, AI, agent, replay, API)
 frontend/
   src/
     components/     TopBar, PulseStrip, map/, zone/, panels
@@ -211,13 +217,13 @@ File-by-file explanation: [docs/FILE_GUIDE.md](docs/FILE_GUIDE.md).
 - Data is synthetic unless a feed reports LIVE; the model is realistic but not calibrated on a
   real city.
 - Relationship rules are hand-written; CityPulse can show signals overlap, never why.
-- Historical replay has data but no replay UI yet; 3D view not implemented.
+- Replay covers one recorded event; 3D view not implemented.
 
 ## Future scope
 
 - Connect real city feeds (311 portals, GTFS-Realtime transit, traffic APIs) through the same
   normalizers.
-- Historical replay controls and multi-day pattern mining.
+- Replay of any time range and multi-day pattern mining.
 - Learned relationship discovery (e.g. Granger tests) reviewed by humans before being shown.
 - Notifications for residents who subscribe to a zone.
 - Optional 3D view of buildings and sensor density.

@@ -1,4 +1,4 @@
-import type { CityState, Sensor, TimelineEntry, ZoneBoundary, ZoneDetail } from "../types";
+import type { CityState, ReplayMeta, Sensor, TimelineEntry, ZoneBoundary, ZoneDetail } from "../types";
 
 // In development Vite proxies /api to the backend. For a deployed build, set VITE_API_BASE.
 const BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/$/, "") ?? "";
@@ -39,6 +39,10 @@ export const api = {
   zone: (id: string) => request<ZoneDetail>(`/api/zones/${id}`),
   sensors: () => request<Sensor[]>("/api/sensors"),
   timeline: () => request<TimelineEntry[]>("/api/timeline"),
+
+  replayMeta: () => request<ReplayMeta>("/api/replay", { signal: AbortSignal.timeout(30000) }),
+  replayFrame: (i: number) => request<CityState>(`/api/replay/frames/${i}`),
+  replayZone: (i: number, zoneId: string) => request<ZoneDetail>(`/api/replay/frames/${i}/zones/${zoneId}`),
 
   triggerEvent: (event: string, zone_id: string) =>
     request<{ message: string }>("/api/simulation/event", {

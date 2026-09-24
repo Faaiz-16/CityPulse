@@ -1,4 +1,4 @@
-import { Activity } from "lucide-react";
+import { Activity, History } from "lucide-react";
 import type { CityState } from "../types";
 import { agoText, clockTime } from "../utils/format";
 import { FeedHealthBar } from "./FeedHealthBar";
@@ -11,7 +11,8 @@ interface Props {
 }
 
 export function TopBar({ state, now, connectionError }: Props) {
-  const stale = now - new Date(state.generated_at).getTime() > 15000;
+  const replay = state.mode === "replay";
+  const stale = !replay && now - new Date(state.generated_at).getTime() > 15000;
   return (
     <header
       className="relative z-[1100] flex flex-wrap items-center gap-x-4 gap-y-2 border-b px-4 py-2.5"
@@ -36,18 +37,30 @@ export function TopBar({ state, now, connectionError }: Props) {
 
       <div className="ml-auto flex flex-wrap items-center gap-3">
         <FeedHealthBar feeds={state.feeds} now={now} />
-        <div className="text-right leading-tight" aria-live="polite">
-          <div className="flex items-center justify-end gap-1.5 text-xs">
-            <span
-              className="h-2 w-2 rounded-full"
-              style={{ background: connectionError || stale ? "var(--bad)" : "var(--ok)" }}
-              aria-hidden
-            />
-            <span className="font-semibold">{connectionError ? "Offline" : "Live"}</span>
-            <span className="font-mono text-[var(--muted)]">{clockTime(state.generated_at)}</span>
+        {replay ? (
+          <div className="text-right leading-tight" aria-live="polite">
+            <div className="flex items-center justify-end gap-1.5 text-xs font-semibold text-[#d8b4fe]">
+              <History size={13} aria-hidden /> Replay
+              <span className="font-mono text-[var(--text)]">{clockTime(state.generated_at)}</span>
+            </div>
+            <div className="text-[11px] text-[var(--muted)]">
+              Recorded {new Date(state.generated_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} — not live
+            </div>
           </div>
-          <div className="text-[11px] text-[var(--muted)]">Updated {agoText(state.generated_at, now)}</div>
-        </div>
+        ) : (
+          <div className="text-right leading-tight" aria-live="polite">
+            <div className="flex items-center justify-end gap-1.5 text-xs">
+              <span
+                className="h-2 w-2 rounded-full"
+                style={{ background: connectionError || stale ? "var(--bad)" : "var(--ok)" }}
+                aria-hidden
+              />
+              <span className="font-semibold">{connectionError ? "Offline" : "Live"}</span>
+              <span className="font-mono text-[var(--muted)]">{clockTime(state.generated_at)}</span>
+            </div>
+            <div className="text-[11px] text-[var(--muted)]">Updated {agoText(state.generated_at, now)}</div>
+          </div>
+        )}
       </div>
     </header>
   );

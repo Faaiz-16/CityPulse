@@ -276,6 +276,7 @@ CHECK FEEDS → CHECK DATA QUALITY → CHECK ANOMALIES → CHECK RELATED SIGNALS
 
 - **Events:** heavy rain, traffic spike, outage cluster, poor air — any zone.
 - **Feed faults:** outage, delay, malformed — any feed.
+- **Replay recorded storm:** see section 14.
 - **Full scenario** ("Monsoon evening in Zone 3"): reset → heavy rain over Zone 3 at +6 s →
   an unrelated traffic build-up in Zone 1 at +70 s (to show CityPulse does *not* link it to rain).
 - Scenario **stages** (Rain begins → Traffic increases → Reports increase → Anomalies →
@@ -284,31 +285,62 @@ CHECK FEEDS → CHECK DATA QUALITY → CHECK ANOMALIES → CHECK RELATED SIGNALS
 - **Warm-up:** on start and reset, the last 10 minutes are back-filled so rolling windows are
   meaningful immediately.
 
-## 14. Frontend structure
+## 14. Historical replay (`simulation/replay.py`)
+
+Replay answers the brief's optional "historical replay to demonstrate pattern detection working
+over past data" — using **stored data**, not the live simulation.
+
+```
+stored history ─► find the recorded event (first/last heavy-rain reading in the archive)
+   ─► load the 1-minute archive around it ─► rolling store
+   ─► step a virtual clock one minute at a time:
+        AnalysisEngine (same code as live) ─► MonitoringAgent (fresh instance) ─► templates ─► ticker
+   ─► frames (cached)  ─► /api/replay, /api/replay/frames/{i}, /api/replay/frames/{i}/zones/{id}
+```
+
+- **The recorded storm** is part of the synthetic history: yesterday evening over Zones 3 and 4.
+  Recorded events unfold over minutes, so downstream lags are stretched ×15 compared with the
+  snappy live demo (`Effect.lag_scale`): rain 18:18 → traffic 18:23 → link 18:25 → disruption 18:26.
+- **1-minute archive.** Normal history is every 5 minutes; around the storm it is stored every
+  minute (provider `recorded archive (1-min)`) so a 10-minute rolling window has enough points.
+  Those extra rows are **excluded from baselines**, and report baselines use the **median across
+  days**, so the storm never redefines "normal" (tested).
+- **Honest labelling.** Replay frames have `mode = "replay"`, every feed shows **ARCHIVE**, the top
+  bar says "Recorded … — not live", and summaries are rule-based.
+- **Client-owned playhead.** The browser asks for frame *i* (play, pause, step, 1×/2×/4×, scrub, jump
+  to a key moment). Frames are computed once (~0.2 s) and cached, so every viewer sees the same thing.
+- **Key moments** use the same stage checks as the live scenario (`storm_stages`), gated so later
+  stages only count after rain is detected.
+- The monitoring agent returns **snapshots** of its alerts so a stored frame never changes after
+  the fact.
+
+## 15. Frontend structure
 
 ```
 App.tsx
-├── TopBar ── PulseStrip (heartbeat: colour = worst status, speed = activity) · FeedHealthBar
+├── TopBar ── PulseStrip (heartbeat: colour = worst status, speed = activity) · FeedHealthBar · live/replay clock
 ├── Left column ── DemoPanel (optional) · SummaryPanel ("Right now") · AlertsList (agent) · EventTicker
 └── Map area
     ├── CityMap ── zone polygons · zone labels · rain cells · report dots · IoT sensors
     ├── LayerToggles · MapLegend · PulseTimeline (zone × time heat-map)
+    ├── ReplayBar (replay mode) ── play/pause/step/speed · zone × time scrubber · key moments
     └── ZonePanel ── risk cards · explanation · metric cards · relationship cards ("Why this flag?")
                      · 15-minute chart · recent reports · agent trace · data sources
 ```
 
-`usePolling` keeps the last good data when a request fails and shows a "connection lost" banner
+In replay mode (`useReplay`), every panel reads the current recorded frame instead of the live
+state — the same components render both. `usePolling` keeps the last good data when a request fails and shows a "connection lost" banner
 instead of blanking the screen.
 
 **10-second read:** the default view shows five zones, each with one status word, an icon and
 issue chips, plus a one-sentence headline. Details live one click away.
 
-## 15. Database schema (summary)
+## 16. Database schema (summary)
 
 | Table | Purpose | Key index |
 |---|---|---|
 | `zones` | zone names + GeoJSON boundary | PK |
-| `civic_readings` | normalized readings (history + live, `is_history` flag) | `(zone_id, metric, ts)` |
+| `civic_readings` | normalized readings (history + live, `is_history` flag; `provider` marks the 1-min replay archive) | `(zone_id, metric, ts)` |
 | `incidents` | anonymous reports | `(zone_id, ts)` |
 | `alerts` | agent alerts with observed / possible link / causation note | `key` |
 | `zone_snapshots` | status every 15 s (heat-map timeline, audit) | `ts` |
@@ -318,7 +350,7 @@ Anomalies and relationships are **recomputed** from readings every tick (they ar
 data), and recorded per snapshot, so no separate tables are needed. Schema is created with
 `Base.metadata.create_all`; for a production deployment, add Alembic migrations.
 
-## 16. Known limitations
+## 17. Known limitations
 
 - Zones and most data are synthetic; the analysis is designed for real feeds but has not been
   calibrated on them.
@@ -327,3 +359,5 @@ data), and recorded per snapshot, so no separate tables are needed. Schema is cr
 - In live mode the AQI baseline is still learned from synthetic history, so only the absolute
   AQI rule is applied to live values.
 - The LLM path is covered by unit tests with a mocked client; it depends on a valid API key.
+- Replay covers one recorded event (the storm in the synthetic archive); it isn't a general
+  "pick any time range" explorer.

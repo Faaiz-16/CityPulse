@@ -69,7 +69,7 @@ source .venv/bin/activate
 python -m pytest -q
 ```
 
-Expected: `89 passed`. Tests use a temporary database and a simulated clock, so they are fast
+Expected: `98 passed`. Tests use a temporary database and a simulated clock, so they are fast
 and deterministic.
 
 Frontend type-check and production build:
@@ -96,5 +96,6 @@ Tables are created automatically on start-up.
 | `Address already in use` | Another process is on port 8000/5173. Stop it or use `--port`. |
 | Map is dark with no streets | No internet for map tiles. Zones, labels and data still work. |
 | All feeds show `UNAVAILABLE` after the laptop slept | Normal — feeds recover on the next tick (≤ 10 s). |
+| "Replay: No recorded event found" | History is generated on first start; restart the backend once. |
 | Want a clean slate | Delete `backend/data/citypulse.db` and restart, or press **Demo → Normal state**. |
 | AI badge never says "AI-assisted" | `ANTHROPIC_API_KEY` not set or the call failed; `/api/health` shows the AI status. Rule-based summaries are complete on their own. |

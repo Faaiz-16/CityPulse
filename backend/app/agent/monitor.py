@@ -20,7 +20,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 
-from app.schemas import Alert, FeedHealth, FeedStatus, ZoneState, ZoneStatus
+from app.schemas import HEALTHY_FEED_STATUSES, Alert, FeedHealth, FeedStatus, ZoneState, ZoneStatus
 
 log = logging.getLogger("citypulse.agent")
 
@@ -60,7 +60,7 @@ class MonitoringAgent:
         candidates: list[Candidate] = []
 
         # 1–2. Feeds and data quality
-        degraded = [f for f in feeds if f.status not in (FeedStatus.LIVE, FeedStatus.SIMULATED)]
+        degraded = [f for f in feeds if f.status not in HEALTHY_FEED_STATUSES]
         trace.append(f"Checked {len(feeds)} feeds: " + (
             ", ".join(f"{f.label} {f.status.value}" for f in degraded) if degraded else "all healthy"))
         for f in degraded:
@@ -116,11 +116,14 @@ class MonitoringAgent:
         self.trace = trace
         return events
 
+    # Callers get snapshots: the agent keeps mutating its own alerts (update, resolve), and a
+    # stored state — e.g. a replay frame — must not change after the fact.
     def active(self) -> list[Alert]:
-        return sorted(self._open.values(), key=lambda a: (-_LEVEL_RANK[a.level], a.opened_at))
+        alerts = sorted(self._open.values(), key=lambda a: (-_LEVEL_RANK[a.level], a.opened_at))
+        return [a.model_copy(deep=True) for a in alerts]
 
     def recent_resolved(self, n: int = 10) -> list[Alert]:
-        return self._resolved[-n:][::-1]
+        return [a.model_copy(deep=True) for a in self._resolved[-n:][::-1]]
 
     def reset(self) -> None:
         self._open.clear()

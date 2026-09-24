@@ -17,7 +17,7 @@ when the feature has been built and verified (automated tests + manual run in th
 | 4 | Live, glanceable dashboard or map | Map-first UI: zones coloured GREEN/YELLOW/RED **with icons + words**, pulse strip, ticker; 3-second polling | M8–M11 `frontend/` | Manual + build check | Opening screen | ✅ Done |
 | 5 | Plain-language summary — what's happening and why it matters | Template summary (always available) + optional grounded LLM rewrite with numeric grounding validator | M6 `backend/app/ai/` | `test_ai_agent_simulation.py` | "Right now" panel | ✅ Done |
 | 6 | *Optional:* threshold alerting | Monitoring agent opens/resolves alerts with observed vs possible-link wording | M12 `backend/app/agent/` | `test_ai_agent_simulation.py` | Alert appears when Zone 3 goes RED | ✅ Done |
-| 7 | *Optional:* historical replay | Replays a recorded storm from the seeded multi-day history through the same analysis engine | M13 `backend/app/simulation/history.py` | — | "Replay recorded storm" | 🟡 Partial — storm recorded in history; replay UI not built |
+| 7 | *Optional:* historical replay | Replays a recorded storm from the stored archive minute by minute through the same analysis engine and agent; scrubber + key moments | M13 `backend/app/simulation/replay.py`, `frontend/src/components/ReplayBar.tsx` | `test_replay.py` | "Replay storm" → play / jump to "Possible relationship found" | ✅ Done |
 
 ## 2. Constraints & Considerations (PDF §7)
 
@@ -37,7 +37,7 @@ when the feature has been built and verified (automated tests + manual run in th
 | Simple anomaly/correlation rule on a rolling window | Relationship rules evaluated over a configurable 10-minute window | ✅ Done |
 | Live map a non-technical person reads at a glance | Map-first UI | ✅ Done |
 | Short plain-language summary grounded strictly in the data | Template + validated LLM | ✅ Done |
-| Advanced: ML anomaly detection, agentic monitoring, alerting, historical replay | Robust-z + Poisson statistics, co-movement (Pearson), monitoring agent, threshold alerts, replay data | 🟡 Partial — all done except the replay UI |
+| Advanced: ML anomaly detection, agentic monitoring, alerting, historical replay | Robust-z + Poisson statistics, co-movement (Pearson), monitoring agent, threshold alerts, historical replay | ✅ Done |
 
 ## 4. Innovation Opportunities (PDF §6)
 

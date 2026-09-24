@@ -2,7 +2,7 @@ import { CloudSun, Car, FileText, Wind, Radio, type LucideIcon } from "lucide-re
 import { useState } from "react";
 import type { FeedHealth } from "../types";
 import { agoText } from "../utils/format";
-import { FEED_META } from "../utils/status";
+import { FEED_META, isHealthyFeed } from "../utils/status";
 
 const FEED_ICONS: Record<string, LucideIcon> = {
   weather: CloudSun,
@@ -28,7 +28,7 @@ export function FeedHealthBar({ feeds, now }: { feeds: FeedHealth[]; now: number
       {feeds.map((f) => {
         const meta = FEED_META[f.status];
         const Icon = FEED_ICONS[f.id] ?? Radio;
-        const healthy = f.status === "LIVE" || f.status === "SIMULATED";
+        const healthy = isHealthyFeed(f.status);
         return (
           <div key={f.id} className="relative">
             <button

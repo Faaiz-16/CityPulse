@@ -1,7 +1,7 @@
 // Mirrors backend/app/schemas.py — the structured civic state served by /api/dashboard.
 
 export type ZoneStatus = "GREEN" | "YELLOW" | "RED";
-export type FeedStatusValue = "LIVE" | "SIMULATED" | "FALLBACK" | "DELAYED" | "STALE" | "UNAVAILABLE";
+export type FeedStatusValue = "LIVE" | "SIMULATED" | "FALLBACK" | "DELAYED" | "STALE" | "UNAVAILABLE" | "ARCHIVE";
 export type Severity = "none" | "low" | "moderate" | "high";
 export type Strength = "weak" | "moderate" | "strong";
 
@@ -234,4 +234,16 @@ export interface ZoneDetail {
 export interface TimelineEntry {
   at: string;
   zones: Record<string, ZoneStatus>;
+}
+
+export interface ReplayMeta {
+  available: boolean;
+  name: string;
+  description: string;
+  focus_zone: string;
+  start: string;
+  end: string;
+  step_seconds: number;
+  frames: { i: number; t: string; city_status: ZoneStatus; statuses: Record<string, ZoneStatus> }[];
+  key_moments: { i: number; t: string; label: string }[];
 }

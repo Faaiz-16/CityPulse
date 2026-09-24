@@ -169,8 +169,11 @@ def evaluate_zone(z: ZoneSignals, s: Settings) -> tuple[list[Relationship], list
         evidence.append(f"Overlapping {s.rolling_window_minutes}-minute window")
         if lead_lag:
             evidence.append(lead_lag)
-        if r_best is not None:
-            evidence.append(f"The signals moved together over the window (co-movement r = {r_best:.2f})")
+        if r_best is not None and r_best >= 0.5:
+            evidence.append(f"The signals rose and fell together over the window (co-movement r = {r_best:.2f})")
+        elif r_best is not None:
+            evidence.append(f"Little shared movement inside the window (r = {r_best:.2f}) — both are holding "
+                            f"at unusual levels, so this adds no extra evidence")
 
         if strength == "weak":
             statement = (f"{rule.driver_phrase.capitalize()} and {rule.response_phrase} are both present in "

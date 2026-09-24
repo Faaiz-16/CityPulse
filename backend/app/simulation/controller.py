@@ -59,7 +59,8 @@ def _metric(z: ZoneState, key: str):
     return z.metrics.get(key)
 
 
-def _full_scenario_stages() -> list[Stage]:
+def storm_stages() -> list[Stage]:
+    """Stages of a rain-driven disruption, checked against real analysis output (live and replay)."""
     return [
         Stage("normal", "Normal conditions", lambda z: True),
         Stage("rain", "Rain begins", lambda z: (_metric(z, "rain_mm_h").current or 0) >= 2.5),
@@ -72,6 +73,23 @@ def _full_scenario_stages() -> list[Stage]:
               lambda z: any(r.strength != "weak" for r in z.relationships)),
         Stage("disruption", "Potential disruption flagged", lambda z: z.status == ZoneStatus.RED),
     ]
+
+
+def advance_stages(stages: list[Stage], zone: ZoneState, now: datetime) -> list[Stage]:
+    """Mark newly reached stages. Stages after "rain" only count once rain has been detected,
+    so random noise in traffic before the storm can't tick "Traffic increases" early."""
+    rain_seen = any(s.key == "rain" and s.reached_at for s in stages)
+    reached = []
+    for stage in stages:
+        if stage.reached_at is not None:
+            continue
+        if stage.key not in ("normal", "rain") and not rain_seen:
+            continue
+        if stage.check(zone):
+            stage.reached_at = now
+            reached.append(stage)
+            rain_seen = rain_seen or stage.key == "rain"
+    return reached
 
 
 class SimulationController:
@@ -112,7 +130,7 @@ class SimulationController:
                 ScenarioStep(70, "traffic_spike", "Z1",
                              "Scenario: an unrelated traffic build-up starts in Zone 1 — Central.", 0.55),
             ],
-            stages=_full_scenario_stages(),
+            stages=storm_stages(),
         )
         return self.scenario
 
@@ -135,12 +153,7 @@ class SimulationController:
         if not self.scenario:
             return []
         focus = next(z for z in zones if z.id == self.scenario.focus_zone)
-        reached = []
-        for stage in self.scenario.stages:
-            if stage.reached_at is None and stage.check(focus):
-                stage.reached_at = now
-                reached.append(stage.label)
-        return reached
+        return [s.label for s in advance_stages(self.scenario.stages, focus, now)]
 
     # ------------------------------------------------------------------ status
     def status(self, now: datetime) -> dict:

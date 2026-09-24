@@ -16,7 +16,7 @@ from app.ai import llm, templates
 from app.ai.facts import build_facts, fingerprint
 from app.ai.validator import validate
 from app.config import Settings
-from app.schemas import FeedHealth, FeedStatus, Summary, SummarySection, ZoneState
+from app.schemas import HEALTHY_FEED_STATUSES, FeedHealth, Summary, SummarySection, ZoneState
 
 log = logging.getLogger("citypulse.ai")
 
@@ -42,7 +42,7 @@ class Summarizer:
 
     def summarize(self, zones: list[ZoneState], feeds: list[FeedHealth], now: datetime
                   ) -> tuple[Summary, dict[str, SummarySection]]:
-        degraded = [f.label.lower() for f in feeds if f.status not in (FeedStatus.LIVE, FeedStatus.SIMULATED)]
+        degraded = [f.label.lower() for f in feeds if f.status not in HEALTHY_FEED_STATUSES]
         headline, sections = templates.city_summary(zones, degraded)
         zone_sections = {z.id: templates.zone_explanation(z) for z in zones}
         summary = Summary(headline=headline, sections=sections, generated_by="template", generated_at=now)

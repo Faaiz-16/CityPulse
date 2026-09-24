@@ -15,7 +15,7 @@ from app import database as db
 from app.data_sources.city_model import CityModel
 from app.geo.zones import ZONES
 from app.schemas import Alert, CivicIncident, CivicReading, ZoneState
-from app.simulation.history import generate_history
+from app.simulation.history import ARCHIVE_PROVIDER, generate_history
 
 log = logging.getLogger("citypulse.db")
 
@@ -55,11 +55,16 @@ class Persistence:
 
     def ensure_history(self, model: CityModel, now: datetime, days: int
                        ) -> tuple[list[tuple[str, str, datetime, float]], list[tuple[str, str, datetime]]]:
-        """Load stored history, (re)generating it if missing or more than a day old."""
+        """Load stored history for baselines, (re)generating it if missing, old or outdated.
+
+        The 1-minute storm archive is used only for replay and is left out of what this returns.
+        """
         try:
             with db.SessionLocal() as session:
                 latest = session.scalar(select(func.max(db.ReadingRow.ts)).where(db.ReadingRow.is_history))
-                if latest is None or _utc(latest) < now - timedelta(days=1):
+                has_archive = session.scalar(select(func.count()).select_from(db.ReadingRow).where(
+                    db.ReadingRow.is_history, db.ReadingRow.provider == ARCHIVE_PROVIDER))
+                if latest is None or _utc(latest) < now - timedelta(days=1) or not has_archive:
                     log.info("generating %s days of synthetic history…", days)
                     session.execute(delete(db.ReadingRow).where(db.ReadingRow.is_history))
                     session.execute(delete(db.IncidentRow).where(db.IncidentRow.is_history))
@@ -68,11 +73,13 @@ class Persistence:
                     session.execute(insert(db.IncidentRow), incidents)
                     session.commit()
                     self._succeed()
-                    return ([(r["zone_id"], r["metric"], r["ts"], r["value"]) for r in readings],
+                    return ([(r["zone_id"], r["metric"], r["ts"], r["value"]) for r in readings
+                             if r["provider"] != ARCHIVE_PROVIDER],
                             [(i["zone_id"], i["category"], i["ts"]) for i in incidents])
 
                 rows = session.execute(select(db.ReadingRow.zone_id, db.ReadingRow.metric, db.ReadingRow.ts,
-                                              db.ReadingRow.value).where(db.ReadingRow.is_history)).all()
+                                              db.ReadingRow.value).where(
+                    db.ReadingRow.is_history, db.ReadingRow.provider != ARCHIVE_PROVIDER)).all()
                 inc = session.execute(select(db.IncidentRow.zone_id, db.IncidentRow.category, db.IncidentRow.ts)
                                       .where(db.IncidentRow.is_history)).all()
             self._succeed()
@@ -80,6 +87,20 @@ class Persistence:
         except SQLAlchemyError as exc:
             self._fail("loading history", exc)
             return [], []
+
+    def find_recorded_event(self, metric: str, threshold: float) -> tuple[datetime, datetime] | None:
+        """First and last history time a metric was at or above ``threshold`` (e.g. heavy rain)."""
+        try:
+            with db.SessionLocal() as session:
+                first, last = session.execute(
+                    select(func.min(db.ReadingRow.ts), func.max(db.ReadingRow.ts)).where(
+                        db.ReadingRow.is_history, db.ReadingRow.metric == metric,
+                        db.ReadingRow.value >= threshold)).one()
+            self._succeed()
+            return (_utc(first), _utc(last)) if first and last else None
+        except SQLAlchemyError as exc:
+            self._fail("finding recorded event", exc)
+            return None
 
     def load_history_between(self, start: datetime, end: datetime
                              ) -> tuple[list[tuple], list[tuple]]:

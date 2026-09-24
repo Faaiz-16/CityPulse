@@ -107,7 +107,8 @@ class AnalysisEngine:
             interval = feed_intervals.get(mdef.source.value, 10.0)
             window = timedelta(seconds=max(s.current_window_seconds, 2.5 * interval))
             points = store.series(zone.id, key, now - window, now)
-            trend_pts = store.series(zone.id, key, now - timedelta(minutes=3), now)
+            # Trend needs a handful of points: ≥ 3 minutes, longer for slower feeds (e.g. archives).
+            trend_pts = store.series(zone.id, key, now - timedelta(seconds=max(180, 6 * interval)), now)
             base = self.baselines.continuous(zone.id, key, now)
             m = assess_continuous(mdef, points, trend_pts, base, s)
             metrics[key] = m

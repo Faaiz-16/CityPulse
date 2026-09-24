@@ -1,4 +1,4 @@
-import { CheckCircle2, Circle, CloudRain, FlaskConical, Play, RotateCcw, Car, Wind, X, Zap } from "lucide-react";
+import { CheckCircle2, Circle, CloudRain, FlaskConical, History, Play, RotateCcw, Car, Wind, X, Zap } from "lucide-react";
 import { useState } from "react";
 import { api } from "../services/api";
 import type { FeedHealth, SimulationStatus, ZoneState } from "../types";
@@ -24,10 +24,11 @@ interface Props {
   selectedZone: string | null;
   onClose: () => void;
   onChanged: () => void;
+  onStartReplay: () => void;
 }
 
 /** Judge/demo controls. Events change the simulated city; the pipeline must detect them itself. */
-export function DemoPanel({ sim, zones, feeds, selectedZone, onClose, onChanged }: Props) {
+export function DemoPanel({ sim, zones, feeds, selectedZone, onClose, onChanged, onStartReplay }: Props) {
   const [zone, setZone] = useState(selectedZone ?? "Z3");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ text: string; error?: boolean } | null>(null);
@@ -81,6 +82,14 @@ export function DemoPanel({ sim, zones, feeds, selectedZone, onClose, onChanged 
             style={{ border: "1px solid var(--line)", background: "var(--panel-2)" }}
           >
             <RotateCcw size={14} aria-hidden /> Normal state
+          </button>
+          <button
+            type="button"
+            onClick={onStartReplay}
+            className="col-span-2 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-semibold"
+            style={{ border: "1px solid #c084fc66", background: "rgba(192,132,252,0.1)", color: "#e9d5ff" }}
+          >
+            <History size={14} aria-hidden /> Replay recorded storm (past data)
           </button>
         </div>
 

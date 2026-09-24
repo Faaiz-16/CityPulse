@@ -83,21 +83,30 @@ class BaselineModel:
         days = max((last - first).total_seconds() / 86400, 1 / 24) if first and last else 0
         self.history_days = round(days, 2)
 
-        # Incident rate per minute, per derived metric, per slot (averaged over the history).
-        counts: dict[tuple[str, str, int], int] = defaultdict(int)
+        # Report rate per minute, per derived metric, per slot. Computed per day and then the
+        # MEDIAN across days is taken, so one stormy evening doesn't raise "normal" for every day.
+        covered: set[tuple[object, int]] = set()  # (local date, slot) pairs the history covers
+        for _, _, ts, _ in readings:
+            local = ts.astimezone(self.tz)
+            covered.add((local.date(), slot_of(ts, self.tz)))
+        counts: dict[tuple[str, str, object, int], int] = defaultdict(int)
         for zone, category, ts in incidents:
+            local = ts.astimezone(self.tz)
             slot = slot_of(ts, self.tz)
             for metric, cats in DERIVED_INCIDENT_METRICS.items():
                 if cats is None or category in cats:
-                    counts[(zone, metric, slot)] += 1
-        if days:
-            zones = {z for z, _ in keys} | {z for z, _, _ in counts}
-            for zone in zones:
-                for metric in DERIVED_INCIDENT_METRICS:
-                    for slot in range(SLOTS_PER_DAY):
-                        n = sum(counts.get((zone, metric, (slot + d) % SLOTS_PER_DAY), 0) for d in (-1, 0, 1))
-                        # 3 slots × 30 min × number of days of history
-                        self._incident_rate[(zone, metric, slot)] = n / (90 * days)
+                    counts[(zone, metric, local.date(), slot)] += 1
+        dates = sorted({d for d, _ in covered})
+        zones = {z for z, _ in keys}
+        for zone in zones:
+            for metric in DERIVED_INCIDENT_METRICS:
+                for slot in range(SLOTS_PER_DAY):
+                    per_day = [
+                        sum(counts.get((zone, metric, d, (slot + k) % SLOTS_PER_DAY), 0) for k in (-1, 0, 1)) / 90
+                        for d in dates if (d, slot) in covered
+                    ]
+                    if per_day:
+                        self._incident_rate[(zone, metric, slot)] = statistics.median(per_day)
         return self
 
     # ----------------------------------------------------------------- lookup

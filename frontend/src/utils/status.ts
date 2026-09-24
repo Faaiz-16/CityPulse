@@ -31,7 +31,11 @@ export const FEED_META: Record<FeedStatusValue, { color: string; hint: string }>
   DELAYED: { color: "var(--warn)", hint: "Updates arriving later than expected" },
   STALE: { color: "var(--bad)", hint: "Data is old — not used as current" },
   UNAVAILABLE: { color: "var(--bad)", hint: "No usable data from this feed" },
+  ARCHIVE: { color: "var(--link)", hint: "Recorded data being replayed — not live" },
 };
+
+/** Feed statuses that mean "delivering usable data as designed". */
+export const isHealthyFeed = (s: FeedStatusValue) => s === "LIVE" || s === "SIMULATED" || s === "ARCHIVE";
 
 export const SEVERITY_META: Record<Severity, { color: string; word: string }> = {
   none: { color: "var(--muted)", word: "Normal" },

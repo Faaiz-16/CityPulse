@@ -18,23 +18,18 @@ from app.agent.monitor import MonitoringAgent
 from app.ai.summarizer import Summarizer
 from app.analysis.baseline import BaselineModel
 from app.analysis.engine import AnalysisEngine
-from app.analysis.metrics import INCIDENT_CATEGORIES, METRICS
 from app.config import Settings, get_settings
 from app.data_sources.city_model import CityModel
-from app.geo.zones import SENSOR_REGISTRY, ZONES_BY_ID
+from app.geo.zones import SENSOR_REGISTRY
 from app.normalization.normalizers import Context
-from app.schemas import (
-    CityState,
-    DataStatus,
-    FeedStatus,
-    SummarySection,
-    TickerEvent,
-    ZoneState,
-)
+from app.schemas import CityState, DataStatus, SummarySection, ZoneState
+from app.services import views
 from app.services.feed_manager import FEEDS, SYNTHETIC_PROVIDER, FeedManager
 from app.services.persistence import Persistence
 from app.services.store import ReadingStore
+from app.services.ticker import Ticker
 from app.simulation.controller import SimulationController
+from app.simulation.replay import ReplayService
 
 log = logging.getLogger("citypulse.pipeline")
 
@@ -56,14 +51,13 @@ class CityPulse:
         self.db = persistence or Persistence()
         self.agent = MonitoringAgent(persist=self.db.save_alert)
         self.sim = SimulationController(self.model)
+        self.replay = ReplayService(self.s, self.baselines, self.db)
 
         self.state: CityState | None = None
         self.zone_explanations: dict[str, SummarySection] = {}
-        self.ticker: deque[TickerEvent] = deque(maxlen=80)
+        self.ticker = Ticker()
         self.timeline: deque[tuple[datetime, dict[str, str]]] = deque()
         self._lock = threading.RLock()
-        self._prev_zones: dict[str, ZoneState] = {}
-        self._prev_feed_status: dict[str, FeedStatus] = {}
         self._last_snapshot: datetime | None = None
         self._last_prune_db: datetime | None = None
         self.started_at: datetime | None = None
@@ -133,13 +127,13 @@ class CityPulse:
             self._ticker(now, self.sim.scenario.focus_zone if self.sim.scenario else None,
                          "simulation", f"Scenario stage reached: {label}")
 
-        self._update_ticker(now, zones, feed_health, new_incidents, alert_events)
+        self.ticker.update(now, zones, feed_health, new_incidents, alert_events)
         self._update_timeline(now, zones)
 
         self.state = CityState(
             generated_at=now, city_name=self.s.city_name, pulse=pulse, zones=zones, feeds=feed_health,
             alerts=self.agent.active() + self.agent.recent_resolved(6), summary=summary,
-            ticker=list(self.ticker)[::-1][:40], simulation=self.sim.status(now),
+            ticker=self.ticker.latest(), simulation=self.sim.status(now),
             config=self.public_config(),
         )
         self.zone_explanations = zone_sections
@@ -185,8 +179,6 @@ class CityPulse:
             self.agent.reset()
             self.ticker.clear()
             self.timeline.clear()
-            self._prev_zones.clear()
-            self._prev_feed_status.clear()
             self.db.clear_live()
             self.db.save_simulation_event(now, "reset", None, {})
             self.warm_up(now)
@@ -195,32 +187,15 @@ class CityPulse:
             self.tick(now)
 
     # ------------------------------------------------------------------- views
-    def zone_detail(self, zone_id: str, now: datetime | None = None) -> dict:
-        now = now or (self.state.generated_at if self.state else datetime.now(UTC))
+    def zone_detail(self, zone_id: str) -> dict:
+        now = self.state.generated_at
         zone_state = next(z for z in self.state.zones if z.id == zone_id)
-        start = now - timedelta(minutes=15)
-        series = {}
-        for key in ("rain_mm_h", "congestion_pct", "transit_delay_min", "aqi", "water_level_cm",
-                    "temperature_c"):
-            points = self.store.series(zone_id, key, start, now)
-            series[key] = _downsample(points, start, now, 20)
-        reports = self.store.incidents(start, now, zone_id)
-        per_minute: dict[str, int] = {}
-        for r in reports:
-            minute = r.timestamp.replace(second=0, microsecond=0).isoformat()
-            per_minute[minute] = per_minute.get(minute, 0) + 1
-        explanation = self.zone_explanations.get(zone_id)
-        return {
-            "zone": zone_state,
-            "explanation": explanation,
-            "explanation_by": self.state.summary.generated_by if self.state else "template",
-            "series": series,
-            "baselines": {k: self.baselines.continuous(zone_id, k, now).median for k in series},
-            "reports_per_minute": [{"minute": k, "count": v} for k, v in sorted(per_minute.items())],
-            "sensors": [s for s in self.sensor_list() if s["zone_id"] == zone_id],
-            "alerts": [a for a in self.agent.active() if a.zone_id == zone_id],
-            "agent_trace": self.agent.trace,
-        }
+        return views.zone_detail(
+            self.store, self.baselines, zone_state, now,
+            explanation=self.zone_explanations.get(zone_id), explanation_by=self.state.summary.generated_by,
+            alerts=self.agent.active(), agent_trace=self.agent.trace,
+            sensors=[s for s in self.sensor_list() if s["zone_id"] == zone_id],
+        )
 
     def sensor_list(self) -> list[dict]:
         out = []
@@ -254,44 +229,7 @@ class CityPulse:
 
     # ------------------------------------------------------------------ ticker
     def _ticker(self, at: datetime, zone_id: str | None, kind: str, text: str, severity: str = "none") -> None:
-        self.ticker.append(TickerEvent(at=at, zone_id=zone_id, kind=kind, text=text, severity=severity))
-
-    def _update_ticker(self, now, zones: list[ZoneState], feeds, new_incidents, alert_events) -> None:
-        for inc in new_incidents[-6:]:
-            zone = ZONES_BY_ID[inc.zone_id]
-            self._ticker(inc.timestamp, inc.zone_id, "incident",
-                         f"{zone.short_name}: {INCIDENT_CATEGORIES[inc.category]['label']} reported",
-                         "low" if inc.severity == "low" else "moderate")
-
-        for z in zones:
-            prev = self._prev_zones.get(z.id)
-            prev_anoms = {a.metric for a in prev.anomalies} if prev else set()
-            for a in z.anomalies:
-                if a.metric not in prev_anoms:
-                    self._ticker(now, z.id, "anomaly", f"{z.short_name}: {a.description}", a.severity)
-            for metric in prev_anoms - {a.metric for a in z.anomalies}:
-                self._ticker(now, z.id, "anomaly", f"{z.short_name}: {METRICS[metric].label} back within normal range")
-            prev_links = {r.id for r in prev.relationships if r.strength != "weak"} if prev else set()
-            for r in z.relationships:
-                if r.strength != "weak" and r.id not in prev_links:
-                    self._ticker(now, z.id, "relationship",
-                                 f"{z.short_name}: possible link — {r.title.lower()} ({r.strength})", "moderate")
-            if prev and prev.status != z.status:
-                self._ticker(now, z.id, "status", f"{z.name} is now {z.status.value} — {z.status_label}",
-                             "high" if z.status.value == "RED" else "low")
-            self._prev_zones[z.id] = z
-
-        for event, alert in alert_events:
-            prefix = {"opened": "Agent alert", "escalated": "Agent escalated", "resolved": "Agent resolved"}[event]
-            self._ticker(now, alert.zone_id, "alert", f"{prefix}: {alert.title}",
-                         "high" if alert.level == "critical" and event != "resolved" else "low")
-
-        for f in feeds:
-            prev = self._prev_feed_status.get(f.id)
-            if prev is not None and prev != f.status:
-                self._ticker(now, None, "feed", f"{f.label} feed is now {f.status.value}",
-                             "moderate" if f.status not in (FeedStatus.LIVE, FeedStatus.SIMULATED) else "none")
-            self._prev_feed_status[f.id] = f.status
+        self.ticker.add(at, zone_id, kind, text, severity)
 
     def _update_timeline(self, now: datetime, zones: list[ZoneState]) -> None:
         if self._last_snapshot and now - self._last_snapshot < SNAPSHOT_EVERY:
@@ -301,19 +239,4 @@ class CityPulse:
         while self.timeline and self.timeline[0][0] < now - TIMELINE_LENGTH:
             self.timeline.popleft()
         self.db.save_snapshot(now, zones)
-
-
-def _downsample(points, start: datetime, end: datetime, bin_s: int) -> list[dict]:
-    out, idx = [], 0
-    t = start
-    while t < end:
-        t_next = t + timedelta(seconds=bin_s)
-        bucket = []
-        while idx < len(points) and points[idx].ts < t_next:
-            if points[idx].ts >= t:
-                bucket.append(points[idx].value)
-            idx += 1
-        out.append({"t": t_next, "v": round(sum(bucket) / len(bucket), 2) if bucket else None})
-        t = t_next
-    return out
 
