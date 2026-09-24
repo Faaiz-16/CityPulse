@@ -27,7 +27,7 @@ export function hotspotLabelIcon(z: ZoneState, cells: number, selected: boolean,
     const red = z.status === "RED";
     const Icon: LucideIcon = red ? OctagonAlert : CircleAlert;
     const html = renderToStaticMarkup(
-      <div style={{ transform: "translate(-50%, -50%)", width: "max-content", fontFamily: FONT, cursor: "pointer",
+      <div className="cp-scaled" style={{ transform: "translate(-50%, -50%) scale(var(--cp-label-scale, 1))", width: "max-content", fontFamily: FONT, cursor: "pointer",
         padding: "4px 9px 5px", borderRadius: 9, background: "rgba(8,12,18,0.86)",
         border: `${selected ? 2 : 1.2}px solid ${selected ? "#e8eef5" : color}`, boxShadow: "0 4px 14px rgba(0,0,0,0.45)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 5, color, fontSize: red ? 13 : 12, fontWeight: 700 }}>
@@ -35,7 +35,7 @@ export function hotspotLabelIcon(z: ZoneState, cells: number, selected: boolean,
           {z.short_name}
         </div>
         {!small && (
-          <div style={{ color: "#cbd5e1", fontSize: 10.5, fontWeight: 500 }}>
+          <div className="cp-label-sub" style={{ color: "#cbd5e1", fontSize: 10.5, fontWeight: 500 }}>
             {red ? "Possible disruption" : "Needs attention"}{cells > 1 ? ` · ${cells} blocks` : ""}
           </div>
         )}
@@ -49,7 +49,7 @@ export function hotspotLabelIcon(z: ZoneState, cells: number, selected: boolean,
 export function placeLabelIcon(z: ZoneState): L.DivIcon {
   return cached(`place|${z.id}|${z.status}`, () => {
     const html = renderToStaticMarkup(
-      <div style={{ transform: "translate(-50%, -50%)", width: "max-content", display: "flex", alignItems: "center", gap: 5,
+      <div className="cp-scaled" style={{ transform: "translate(-50%, -50%) scale(var(--cp-label-scale, 1))", width: "max-content", display: "flex", alignItems: "center", gap: 5,
         padding: "3px 8px", borderRadius: 999, fontSize: 11, fontWeight: 600, fontFamily: FONT, color: "#e2e8f0",
         background: "rgba(8,12,18,0.8)", border: "1px solid rgba(232,238,245,0.6)" }}>
         <CheckCircle2 size={11} color={MAP_STATUS[z.status]} strokeWidth={2.6} />
@@ -63,7 +63,7 @@ export function placeLabelIcon(z: ZoneState): L.DivIcon {
 /** District name tag in the district's top-left corner ("C2 · Walled City"). */
 export function districtIcon(ref: string, name: string): L.DivIcon {
   return cached(`district|${ref}|${name}`, () => L.divIcon({
-    html: `<div style="transform:translate(6px,5px);width:max-content;font:600 10.5px ${FONT};color:rgba(226,232,240,0.7);`
+    html: `<div class="cp-scaled" style="transform:translate(6px,5px) scale(var(--cp-label-scale,1));transform-origin:top left;width:max-content;font:600 10.5px ${FONT};color:rgba(226,232,240,0.7);`
       + `text-shadow:0 1px 3px rgba(0,0,0,0.9)">${ref} · ${name.replace(/</g, "&lt;")}</div>`,
     className: "cp-divicon", iconSize: [0, 0],
   }));
@@ -85,7 +85,7 @@ export function incidentIcon(kind: string, color: string, count: number): L.DivI
     const Icon = KIND_ICON[kind] ?? CircleAlert;
     const size = count > 1 ? 30 : 26;
     const html = renderToStaticMarkup(
-      <div style={{ position: "relative", width: size, height: size, transform: "translate(-50%, -50%)", fontFamily: FONT }}>
+      <div className="cp-scaled" style={{ position: "relative", width: size, height: size, transform: "translate(-50%, -50%) scale(var(--cp-label-scale, 1))", fontFamily: FONT }}>
         <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: `${color}26`, border: `1.5px solid ${color}`,
           boxShadow: `0 0 12px ${color}aa`, display: "grid", placeItems: "center" }}>
           <Icon size={count > 1 ? 15 : 13} color={color} strokeWidth={2.4} />
@@ -106,7 +106,7 @@ export function incidentIcon(kind: string, color: string, count: number): L.DivI
 export function airIcon(aqi: number): L.DivIcon {
   return cached(`air|${Math.round(aqi)}`, () => {
     const html = renderToStaticMarkup(
-      <div style={{ transform: "translate(-50%, -50%)", width: "max-content", display: "flex", alignItems: "center", gap: 5,
+      <div className="cp-scaled" style={{ transform: "translate(-50%, -50%) scale(var(--cp-label-scale, 1))", width: "max-content", display: "flex", alignItems: "center", gap: 5,
         padding: "3px 8px", borderRadius: 999, background: "rgba(8,12,18,0.8)", border: "1px solid #a855f7",
         color: "#e9d5ff", fontSize: 11, fontWeight: 700, fontFamily: FONT, boxShadow: "0 0 14px #a855f766" }}>
         <Wind size={12} color="#c084fc" /> AQI {Math.round(aqi)}

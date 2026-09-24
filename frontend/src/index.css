@@ -138,6 +138,15 @@ body {
   background: none;
   border: none;
 }
+/* Map labels and icons scale with the zoom (see LabelScale in CityMap): small at city level so
+   they don't hide the map, full size when zoomed in. Far out, labels show only the place name. */
+.cp-scaled {
+  transform-origin: center;
+  transition: transform 0.25s ease-out;
+}
+.cp-zoom-far .cp-label-sub {
+  display: none;
+}
 
 /* Map vectors are drawn on a canvas (fast zooming), so glows are drawn as a wide, faint stroke
    under each line instead of CSS filters. */
@@ -179,6 +188,9 @@ input[type="range"].cp-range {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .cp-scaled {
+    transition: none;
+  }
   .cp-heart,
   .cp-fade-in,
   .cp-slide-left,

@@ -80,6 +80,36 @@ function Framing({ grid, selectedZone, panelOpen }: { grid: Grid; selectedZone: 
   return null;
 }
 
+/**
+ * Labels are HTML markers, which Leaflet keeps at a fixed pixel size. This scales them with the
+ * zoom instead (via a CSS variable on the map), so at city level they are small and don't hide the
+ * map, and they grow back to full size when you zoom into an area.
+ */
+export function labelScale(zoom: number): number {
+  return Math.min(1, Math.max(0.6, 0.6 + (zoom - 11.5) * 0.16));
+}
+
+function LabelScale() {
+  const map = useMap();
+  useEffect(() => {
+    const apply = (zoom: number) => {
+      const el = map.getContainer();
+      el.style.setProperty("--cp-label-scale", labelScale(zoom).toFixed(2));
+      el.classList.toggle("cp-zoom-far", zoom < 12.75);
+    };
+    const onAnim = (e: L.ZoomAnimEvent) => apply(e.zoom); // start resizing as the zoom starts
+    const onEnd = () => apply(map.getZoom());
+    apply(map.getZoom());
+    map.on("zoomanim", onAnim);
+    map.on("zoomend", onEnd);
+    return () => {
+      map.off("zoomanim", onAnim);
+      map.off("zoomend", onEnd);
+    };
+  }, [map]);
+  return null;
+}
+
 // ------------------------------------------------------------------ grid
 
 /** District lines (5 × 5) are clear; block lines (3 × 3 inside each) are faint. Drawn once. */
@@ -412,6 +442,7 @@ export function CityMap({ boundaries, mapInfo, zones, sensors, layers, selectedZ
       <TileLayer url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" maxZoom={19} updateWhenZooming={false} keepBuffer={3}
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' />
       <ZoomControl position="bottomleft" />
+      <LabelScale />
       {grid && (
         <>
           <Framing grid={grid} selectedZone={selectedZone} panelOpen={panelOpen} />
