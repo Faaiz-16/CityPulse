@@ -16,12 +16,24 @@ from datetime import datetime, timedelta
 from app.schemas import CivicIncident, CivicReading
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Point:
+    """One normalized reading in a (zone, metric) series: every common-data-model field except
+    zone and metric, which are the series key. Slots keep ~1M of them light in memory."""
+
     ts: datetime
     value: float
     data_status: str
     sensor_id: str | None
+    source: str = ""
+    source_type: str = ""
+    provider: str = ""
+    unit: str = ""
+    confidence: float = 1.0
+    ingested_at: datetime | None = None
+    lat: float | None = None
+    lon: float | None = None
+    metadata: dict | None = None
 
 
 class ReadingStore:
@@ -39,7 +51,8 @@ class ReadingStore:
         with self._lock:
             for r in sorted(readings, key=lambda r: r.timestamp):
                 series = self._series[(r.zone_id, r.metric)]
-                point = Point(r.timestamp, r.value, r.data_status.value, r.sensor_id)
+                point = Point(r.timestamp, r.value, r.data_status.value, r.sensor_id, r.source, r.source_type.value,
+                              r.provider, r.unit, r.confidence, r.ingested_at, r.lat, r.lon, r.metadata or None)
                 if series and series[-1].ts > r.timestamp:  # late arrival: keep order
                     insort(series, point, key=_ts)
                 else:

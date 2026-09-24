@@ -177,8 +177,16 @@ Errors: `404` `{"detail": "Unknown block 'Z9'. Blocks look like C2-5 (district A
 | `minutes` | no | 15 | 1–40 |
 
 ```json
-[{ "ts": "2026-09-24T11:05:16+00:00", "value": 0.0, "data_status": "simulated", "sensor_id": "RG-E-01" }]
+[{ "source": "traffic", "source_type": "traffic", "provider": "synthetic city model", "zone_id": "C2-9",
+   "timestamp": "2026-09-24T19:00:27.565000Z", "ingested_at": "2026-09-24T19:00:27.566000Z",
+   "metric": "congestion_pct", "value": 44.87, "unit": "%", "confidence": 1.0, "data_status": "simulated",
+   "sensor_id": "TS-C2-9-1", "lat": 26.9246, "lon": 75.8231, "metadata": {} }]
 ```
+
+Each row is a full record in the common data model (`CivicReading`): UTC `timestamp` (when it was
+observed) and `ingested_at` (when CityPulse received it), standard `unit`, block `zone_id`, feed
+`source` / `provider`, `confidence` and `data_status`. `metadata` carries notes from normalization,
+e.g. `{"route_id": "R-84A"}` for bus delays or `{"derived_from": "pm25 (US EPA breakpoints)"}` for AQI.
 
 ### GET `/api/incidents`
 

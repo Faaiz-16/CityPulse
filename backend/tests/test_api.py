@@ -46,7 +46,10 @@ def test_read_endpoints_ok(client, path):
 
 def test_readings_endpoint(client):
     rows = client.get("/api/readings", params={"zone_id": "C3-2", "metric": "congestion_pct"}).json()
-    assert rows and {"ts", "value", "data_status"} <= set(rows[0])
+    common_model = {"source", "source_type", "provider", "zone_id", "timestamp", "ingested_at", "metric", "value",
+                    "unit", "confidence", "data_status", "sensor_id", "lat", "lon", "metadata"}
+    assert rows and set(rows[0]) == common_model
+    assert rows[0]["zone_id"] == "C3-2" and rows[0]["metric"] == "congestion_pct" and rows[0]["unit"] == "%"
 
 
 def test_invalid_simulation_requests_get_clear_errors(client):

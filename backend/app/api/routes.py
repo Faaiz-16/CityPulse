@@ -96,9 +96,13 @@ def zone_detail(zone_id: str, p: CityPulse = Depends(get_pipeline)):
 @router.get("/readings")
 def readings(zone_id: str = Query(...), metric: str = Query(...),
              minutes: int = Query(15, ge=1, le=40), p: CityPulse = Depends(get_pipeline)):
+    """Recent readings as full common-data-model records (same fields as ``CivicReading``)."""
     _zone_or_404(zone_id)
     now = p.state.generated_at
-    return [{"ts": pt.ts, "value": pt.value, "data_status": pt.data_status, "sensor_id": pt.sensor_id}
+    return [{"source": pt.source, "source_type": pt.source_type, "provider": pt.provider, "zone_id": zone_id,
+             "timestamp": pt.ts, "ingested_at": pt.ingested_at, "metric": metric, "value": pt.value, "unit": pt.unit,
+             "confidence": pt.confidence, "data_status": pt.data_status, "sensor_id": pt.sensor_id,
+             "lat": pt.lat, "lon": pt.lon, "metadata": pt.metadata or {}}
             for pt in p.store.series(zone_id, metric, now - timedelta(minutes=minutes), now)]
 
 
