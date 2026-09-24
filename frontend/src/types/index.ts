@@ -230,8 +230,10 @@ export interface ZoneBoundary {
   number: number;
   name: string;
   short_name: string;
-  row: number;
-  col: number;
+  row: number; // global block row, 0 (north) … 14
+  col: number; // global block column, 0 (west) … 14
+  district: string; // "C2"
+  district_name: string; // "Walled City"
   centroid: [number, number];
   anchor: [number, number];
   boundary: { type: "Polygon"; coordinates: number[][][] };
@@ -246,7 +248,8 @@ export interface Road {
 
 export interface MapInfo {
   city: string;
-  grid: { north: number; south: number; west: number; east: number; rows: number; cols: number; col_letters: string };
+  // 5 × 5 districts (A–E, 1–5), each 3 × 3 blocks → a 15 × 15 block grid
+  grid: { north: number; south: number; west: number; east: number; rows: number; cols: number; districts: number; blocks: number; col_letters: string };
   roads: Road[];
   roads_attribution: string;
 }

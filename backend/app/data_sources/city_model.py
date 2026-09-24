@@ -7,15 +7,17 @@ what the city *actually* looks like:
             + active simulation effects × how strongly they reach this area
             + small deterministic noise
 
-Jaipur is a 9 × 9 grid of areas. Busier areas near the Walled City have more traffic and
-reports; industrial areas have worse air. An event (a storm, a crash…) is centred on one cell
-and reaches its neighbours with decreasing strength, so it shows up as a realistic hotspot.
+Jaipur is a 15 × 15 grid of ~1.5 km blocks (5 × 5 districts of 3 × 3 blocks). Busier blocks near
+the Walled City have more traffic and reports; industrial areas have worse air. An event (a storm,
+a crash…) is centred on one block and reaches its neighbours with decreasing strength, so it
+shows up as a realistic hotspot.
 
 The feeds then report this ground truth in their own messy vendor formats, which is what
 the normalization layer has to untangle. Because noise is seeded from (seed, zone, metric,
 time), the same inputs always produce the same outputs, so demos and tests are repeatable.
 """
 
+import hashlib
 import math
 import random
 from dataclasses import dataclass, field
@@ -26,19 +28,28 @@ from zoneinfo import ZoneInfo
 from app.geo.zones import CELL_LAT, CELL_LON, ZONES, ZONES_BY_ID, cell_bounds, cell_distance
 
 # The city core (between C-Scheme and the Walled City): traffic and reports peak here.
-_CORE = (3.3, 4.6)  # (row, col) in cells
-# Industrial areas (worse air) and forested hills (cleaner air).
-_AIR_OVERRIDES = {"D1": 1.35, "C1": 1.15, "E1": 1.1, "G9": 1.3, "F9": 1.1, "D8": 1.15, "C8": 1.1,
-                  "E2": 0.85, "F2": 0.85, "E3": 0.9, "F3": 0.9, "G3": 0.9, "G2": 0.9}
+_CORE = (26.912, 75.815)
+# Industrial areas (worse air) and forested hills (cleaner air): (lat, lon, radius km, factor).
+_AIR_SPOTS = ((26.985, 75.770, 3.0, 1.35),  # VKI Industrial Area
+              (26.800, 75.845, 2.5, 1.3),  # Sitapura industrial area
+              (26.818, 75.765, 2.0, 1.15),  # Sanganer industrial area
+              (26.945, 75.835, 3.0, 0.86))  # Nahargarh hills
+
+
+def _km(a: tuple[float, float], b: tuple[float, float]) -> float:
+    return math.hypot((a[0] - b[0]) * 111.2, (a[1] - b[1]) * 99.3)
 
 
 def _character(zone) -> dict[str, float]:
-    d2 = (zone.row - _CORE[0]) ** 2 + (zone.col - _CORE[1]) ** 2
-    busy = math.exp(-d2 / 10)  # 1 in the core → ~0 at the edge of the grid
+    busy = math.exp(-_km(zone.centroid, _CORE) ** 2 / 60)  # 1 in the core → ~0 at the edge of the grid
+    air = 0.95 + 0.15 * busy
+    for lat, lon, radius, factor in _AIR_SPOTS:
+        if _km(zone.centroid, (lat, lon)) <= radius:
+            air = factor
     jitter = random.Random(f"char|{zone.id}")
     return {
         "traffic": round((0.72 + 0.58 * busy) * jitter.uniform(0.95, 1.05), 3),
-        "air": round(_AIR_OVERRIDES.get(zone.id, 0.95 + 0.15 * busy) * jitter.uniform(0.97, 1.03), 3),
+        "air": round(air * jitter.uniform(0.97, 1.03), 3),
         "incidents": round(0.5 + 1.1 * busy, 3),
     }
 
@@ -46,8 +57,8 @@ def _character(zone) -> dict[str, float]:
 # How each area differs from the city average.
 ZONE_CHARACTER: dict[str, dict[str, float]] = {z.id: _character(z) for z in ZONES}
 
-# Background reports are spread over 81 small areas, so each area's share is small.
-AREA_REPORT_SHARE = 1 / 12
+# Background reports are spread over 225 small blocks, so each block's share is small.
+AREA_REPORT_SHARE = 1 / 33
 
 FREE_FLOW_KMH = 45.0
 
@@ -125,11 +136,11 @@ EFFECT_INCIDENTS: dict[str, dict[str, tuple[float, float]]] = {
 
 EFFECT_KINDS = tuple(EFFECT_IMPACTS)
 
-# How far each kind of event reaches, in cells (Gaussian spread around the centre cell).
-# A storm covers several areas; a crash or a substation failure is local.
+# How far each kind of event reaches, in blocks (~1.5 km; Gaussian spread around the centre
+# block). A storm covers several blocks; a crash or a substation failure is local.
 EFFECT_SPREAD: dict[str, float] = {
-    "heavy_rain": 0.8, "flooding": 0.55, "traffic_spike": 0.7, "incident_cluster": 0.6,
-    "poor_air": 1.1, "road_accident": 0.45,
+    "heavy_rain": 1.3, "flooding": 0.8, "traffic_spike": 1.0, "incident_cluster": 0.8,
+    "poor_air": 1.6, "road_accident": 0.45,
 }
 MIN_REACH = 0.12  # weaker than this and the area is not affected at all
 
@@ -238,8 +249,8 @@ class CityModel:
     _carry: dict[tuple[str, str], float] = field(default_factory=dict, repr=False)  # event reports owed
 
     # ------------------------------------------------------------------ utils
-    def rng(self, *keys: object) -> random.Random:
-        return random.Random(f"{self.seed}|" + "|".join(str(k) for k in keys))
+    def rng(self, *keys: object) -> "KeyedRng":
+        return KeyedRng(f"{self.seed}|" + "|".join(str(k) for k in keys))
 
     def active_effects(self, zone_id: str, t: datetime) -> list[tuple[Effect, float]]:
         """Effects reaching this area at ``t``, with how strongly they reach it (0–1)."""
@@ -343,7 +354,7 @@ class CityModel:
                             "key": f"{zone_id}-{category}-{int(t0.timestamp())}-{i}"})
         return sorted(out, key=lambda r: r["ts"])
 
-    def random_point(self, zone_id: str, rng: random.Random) -> tuple[float, float]:
+    def random_point(self, zone_id: str, rng: "KeyedRng") -> tuple[float, float]:
         """A report location inside the area, clustered around its low point (water sensor)."""
         zone = ZONES_BY_ID[zone_id]
         clat, clon = zone.sensors[4][2], zone.sensors[4][3]
@@ -353,7 +364,35 @@ class CityModel:
         return round(lat, 5), round(lon, 5)
 
 
-def _poisson(lam: float, rng: random.Random) -> int:
+class KeyedRng:
+    """Small deterministic random stream for one key (splitmix64).
+
+    The city model draws ~100k independent keyed values per scenario; seeding a full Mersenne
+    Twister for each is the slowest part of the simulation, and this needs no big state.
+    """
+
+    __slots__ = ("_s",)
+    _MASK = (1 << 64) - 1
+
+    def __init__(self, key: str) -> None:
+        self._s = int.from_bytes(hashlib.blake2b(key.encode(), digest_size=8).digest(), "little")
+
+    def random(self) -> float:
+        self._s = (self._s + 0x9E3779B97F4A7C15) & self._MASK
+        z = self._s
+        z = ((z ^ (z >> 30)) * 0xBF58476D1CE4E5B9) & self._MASK
+        z = ((z ^ (z >> 27)) * 0x94D049BB133111EB) & self._MASK
+        return ((z ^ (z >> 31)) >> 11) / 9007199254740992.0  # 53 bits → [0, 1)
+
+    def gauss(self, mu: float = 0.0, sigma: float = 1.0) -> float:
+        u = 1.0 - self.random()  # (0, 1]
+        return mu + sigma * math.sqrt(-2.0 * math.log(u)) * math.cos(2 * math.pi * self.random())
+
+    def randint(self, a: int, b: int) -> int:
+        return a + int(self.random() * (b - a + 1))
+
+
+def _poisson(lam: float, rng: KeyedRng) -> int:
     """Knuth's algorithm — fine for the small rates used here."""
     if lam <= 0:
         return 0

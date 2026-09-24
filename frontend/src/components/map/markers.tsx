@@ -19,7 +19,7 @@ function cached(key: string, build: () => L.DivIcon): L.DivIcon {
 
 const FONT = "Inter, system-ui, sans-serif";
 
-/** Hotspot label: the heart of a group of unusual areas — where, how serious, what. */
+/** Hotspot label: the heart of a group of unusual blocks — where, how serious, what. */
 export function hotspotLabelIcon(z: ZoneState, cells: number, selected: boolean, small: boolean): L.DivIcon {
   const key = `spot|${z.id}|${z.status}|${z.headline}|${cells}|${selected}|${small}`;
   return cached(key, () => {
@@ -36,7 +36,7 @@ export function hotspotLabelIcon(z: ZoneState, cells: number, selected: boolean,
         </div>
         {!small && (
           <div style={{ color: "#cbd5e1", fontSize: 10.5, fontWeight: 500 }}>
-            {red ? "Possible disruption" : "Needs attention"}{cells > 1 ? ` · ${cells} areas` : ""}
+            {red ? "Possible disruption" : "Needs attention"}{cells > 1 ? ` · ${cells} blocks` : ""}
           </div>
         )}
       </div>,
@@ -45,7 +45,7 @@ export function hotspotLabelIcon(z: ZoneState, cells: number, selected: boolean,
   });
 }
 
-/** Small name tag for a selected normal area. */
+/** Small name tag for a selected normal block. */
 export function placeLabelIcon(z: ZoneState): L.DivIcon {
   return cached(`place|${z.id}|${z.status}`, () => {
     const html = renderToStaticMarkup(
@@ -60,7 +60,16 @@ export function placeLabelIcon(z: ZoneState): L.DivIcon {
   });
 }
 
-/** Grid reference (A–I, 1–9) along the edges of the grid. */
+/** District name tag in the district's top-left corner ("C2 · Walled City"). */
+export function districtIcon(ref: string, name: string): L.DivIcon {
+  return cached(`district|${ref}|${name}`, () => L.divIcon({
+    html: `<div style="transform:translate(6px,5px);width:max-content;font:600 10.5px ${FONT};color:rgba(226,232,240,0.7);`
+      + `text-shadow:0 1px 3px rgba(0,0,0,0.9)">${ref} · ${name.replace(/</g, "&lt;")}</div>`,
+    className: "cp-divicon", iconSize: [0, 0],
+  }));
+}
+
+/** District reference (A–E, 1–5) along the edges of the grid. */
 export function gridRefIcon(text: string): L.DivIcon {
   return cached(`ref|${text}`, () => L.divIcon({
     html: `<div style="transform:translate(-50%,-50%);font:600 11px ${FONT};color:rgba(226,232,240,0.75);letter-spacing:0.04em">${text}</div>`,
@@ -78,7 +87,7 @@ export function incidentIcon(kind: string, color: string, count: number): L.DivI
     const html = renderToStaticMarkup(
       <div style={{ position: "relative", width: size, height: size, transform: "translate(-50%, -50%)", fontFamily: FONT }}>
         <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: `${color}26`, border: `1.5px solid ${color}`,
-          boxShadow: `0 0 12px ${color}aa`, display: "grid", placeItems: "center", backdropFilter: "blur(2px)" }}>
+          boxShadow: `0 0 12px ${color}aa`, display: "grid", placeItems: "center" }}>
           <Icon size={count > 1 ? 15 : 13} color={color} strokeWidth={2.4} />
         </div>
         {count > 1 && (

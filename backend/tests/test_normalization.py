@@ -74,18 +74,18 @@ def test_weather_units_normalized():
 
 
 def test_traffic_congestion_derived_from_speed_and_zone_from_sensor():
-    raw = {"readings": [{"sensorId": "TS-F4-1", "epochMs": int(NOW.timestamp() * 1000),
+    raw = {"readings": [{"sensorId": "TS-C2-9-1", "epochMs": int(NOW.timestamp() * 1000),
                          "speedKph": 22.5, "freeFlowKph": 45}]}
     out = norm.normalize_tsn_traffic(raw, CTX)
     congestion = next(r for r in out.readings if r.metric == "congestion_pct")
-    assert congestion.value == 50.0 and congestion.zone_id == "F4"
+    assert congestion.value == 50.0 and congestion.zone_id == "C2-9"
 
 
 def test_transit_area_codes_mapped_and_unknown_codes_rejected():
-    csv = "route_id,stop_area,delay_seconds,reported_at\nR-1,R4C6,300,24/09/2026 15:00\nR-2,???,60,24/09/2026 15:00"
+    csv = "route_id,stop_area,delay_seconds,reported_at\nR-1,R6C9,300,24/09/2026 15:00\nR-2,???,60,24/09/2026 15:00"
     out = norm.normalize_transit_csv(csv, CTX)
     assert len(out.readings) == 1
-    assert out.readings[0].zone_id == "F4" and out.readings[0].value == 5.0
+    assert out.readings[0].zone_id == "C2-9" and out.readings[0].value == 5.0
     assert out.readings[0].timestamp == NOW
     assert "unknown area code" in out.rejected[0]
 

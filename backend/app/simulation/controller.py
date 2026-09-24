@@ -123,7 +123,7 @@ class SimulationController:
         if event not in EFFECT_KINDS:
             raise SimulationError(f"Unknown event {event!r}. Choose one of: {', '.join(EFFECT_KINDS)}.")
         if zone_id not in ZONE_IDS:
-            raise SimulationError(f"Unknown area {zone_id!r}. Areas are grid cells A1–I9.")
+            raise SimulationError(f"Unknown block {zone_id!r}. Blocks look like C2-5 (district A1–E5, block 1–9).")
         if not 0.2 <= intensity <= 1.5:
             raise SimulationError("Intensity must be between 0.2 and 1.5.")
         if not 60 <= duration_s <= 3600:
@@ -206,7 +206,7 @@ class SimulationController:
     def set_custom(self, zone_id: str, values: dict[str, float], duration_s: float, now: datetime) -> list[str]:
         """Replace the custom scenario with one effect per non-zero slider (0–1.5)."""
         if zone_id not in ZONE_IDS:
-            raise SimulationError(f"Unknown area {zone_id!r}. Areas are grid cells A1–I9.")
+            raise SimulationError(f"Unknown block {zone_id!r}. Blocks look like C2-5 (district A1–E5, block 1–9).")
         unknown = set(values) - set(CUSTOM_CONTROLS)
         if unknown:
             raise SimulationError(f"Unknown control(s): {', '.join(sorted(unknown))}.")

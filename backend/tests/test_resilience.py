@@ -32,7 +32,7 @@ def test_weather_outage_keeps_everything_else_running(pipeline):
     assert status(pipeline, "incidents") == FeedStatus.SIMULATED
     run(pipeline, 150)
     assert status(pipeline, "weather") == FeedStatus.UNAVAILABLE
-    z3 = next(z for z in pipeline.state.zones if z.id == "F4")
+    z3 = next(z for z in pipeline.state.zones if z.id == "C2-9")
     assert z3.metrics["rain_mm_h"].available is False
     assert z3.metrics["congestion_pct"].available is True
     assert any(a.kind == "data_quality" for a in pipeline.state.alerts)
@@ -42,10 +42,10 @@ def test_weather_outage_keeps_everything_else_running(pipeline):
 # Scenario 1b — weather outage while traffic spikes: say what can't be checked
 def test_weather_outage_during_traffic_spike_reports_cannot_assess(pipeline):
     pipeline.set_feed_fault("weather", "outage", now=T0)
-    pipeline.trigger_event("traffic_spike", "F4", now=T0)
+    pipeline.trigger_event("traffic_spike", "C2-9", now=T0)
     for i in range(1, 70):
         pipeline.tick(T0 + timedelta(seconds=3 * i))
-    z3 = next(z for z in pipeline.state.zones if z.id == "F4")
+    z3 = next(z for z in pipeline.state.zones if z.id == "C2-9")
     assert z3.metrics["congestion_pct"].is_anomaly
     assert any("Weather data is unavailable" in n for n in z3.cannot_assess)
 
@@ -56,7 +56,7 @@ def test_traffic_outage_does_not_break_dashboard(pipeline):
     run(pipeline, 150)
     assert status(pipeline, "traffic") == FeedStatus.UNAVAILABLE
     assert status(pipeline, "weather") == FeedStatus.SIMULATED
-    assert len(pipeline.state.zones) == 81
+    assert len(pipeline.state.zones) == 225
 
 
 def test_delayed_feed_becomes_delayed_then_stale(pipeline):
@@ -165,13 +165,13 @@ class BrokenDB(Persistence):
 def test_database_outage_keeps_live_pulse_running(settings):
     p = CityPulse(settings, persistence=BrokenDB())
     p.startup(T0)  # must not raise
-    p.trigger_event("heavy_rain", "F4", now=T0)
+    p.trigger_event("heavy_rain", "C2-9", now=T0)
     for i in range(1, 40):
         p.tick(T0 + timedelta(seconds=3 * i))
     assert p.db.ok is False
-    assert p.state is not None and len(p.state.zones) == 81
+    assert p.state is not None and len(p.state.zones) == 225
     assert p.state.config["baseline_history_days"] == 0  # fell back to default baselines
-    assert next(z for z in p.state.zones if z.id == "F4").metrics["rain_mm_h"].is_anomaly
+    assert next(z for z in p.state.zones if z.id == "C2-9").metrics["rain_mm_h"].is_anomaly
 
 
 def test_live_hourly_air_quality_stays_current_for_its_cadence():

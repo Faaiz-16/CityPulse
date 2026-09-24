@@ -30,9 +30,9 @@ const RANK: Record<AlertLevel, number> = { critical: 0, warning: 1, notice: 2, i
 
 /**
  * The few alerts worth showing on the map, derived from the analysed civic state. Touching
- * unusual areas are one hotspot, so a storm over five cells is one alert, not five:
+ * unusual blocks are one hotspot, so a storm over nine blocks is one alert, not nine:
  * possible disruptions first, then early warnings and the strongest unusual signals,
- * then data problems. Everything else lives in the area panel and the Insights drawer.
+ * then data problems. Everything else lives in the block panel and the Insights drawer.
  */
 export function deriveAlerts(state: CityState): MapAlert[] {
   const out: MapAlert[] = [];

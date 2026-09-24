@@ -106,7 +106,7 @@ def test_rain_and_traffic_same_zone_produce_hedged_relationship():
     ms["congestion_pct"] = metric("congestion_pct", 64, 36, 78, True, "high")
     onsets = {"rain_mm_h": NOW - timedelta(minutes=4), "congestion_pct": NOW - timedelta(minutes=2)}
     binned = {"rain_mm_h": rising(), "congestion_pct": rising(start=36)}
-    rels, insufficient, cannot = evaluate_zone(ZoneSignals("F4", "Walled City (F4)", ms, onsets, binned), S)
+    rels, insufficient, cannot = evaluate_zone(ZoneSignals("C2-9", "Walled City (C2-9)", ms, onsets, binned), S)
     rel = next(r for r in rels if r.rule_id == "rain_traffic")
     assert rel.strength == "strong"
     assert "may be related" in rel.statement
@@ -121,7 +121,7 @@ def test_rain_and_traffic_same_zone_produce_hedged_relationship():
 def test_rain_alone_gives_insufficient_evidence_not_a_relationship():
     ms = normal_zone()
     ms["rain_mm_h"] = metric("rain_mm_h", 26, 0, None, True, "high")
-    rels, insufficient, _ = evaluate_zone(ZoneSignals("B3", "Jhotwara (B3)", ms, {}), S)
+    rels, insufficient, _ = evaluate_zone(ZoneSignals("B2-5", "Jhotwara (B2-5)", ms, {}), S)
     assert rels == []
     assert "no disruption link detected" in insufficient[0]
 
@@ -129,7 +129,7 @@ def test_rain_alone_gives_insufficient_evidence_not_a_relationship():
 def test_traffic_alone_is_not_blamed_on_anything():
     ms = normal_zone()
     ms["congestion_pct"] = metric("congestion_pct", 60, 36, 66, True, "high")
-    rels, insufficient, _ = evaluate_zone(ZoneSignals("E4", "C-Scheme (E4)", ms, {}), S)
+    rels, insufficient, _ = evaluate_zone(ZoneSignals("C3-2", "C-Scheme (C3-2)", ms, {}), S)
     assert rels == []
     assert "insufficient evidence" in insufficient[0]
 
@@ -138,7 +138,7 @@ def test_unavailable_weather_is_reported_as_cannot_assess():
     ms = normal_zone()
     ms["rain_mm_h"] = metric("rain_mm_h", None, 0, None, False, available=False)
     ms["congestion_pct"] = metric("congestion_pct", 60, 36, 66, True, "high")
-    rels, _, cannot = evaluate_zone(ZoneSignals("F4", "Walled City (F4)", ms, {}), S)
+    rels, _, cannot = evaluate_zone(ZoneSignals("C2-9", "Walled City (C2-9)", ms, {}), S)
     assert rels == []
     assert "Weather data is unavailable" in cannot[0]
 
@@ -148,7 +148,7 @@ def test_response_before_driver_weakens_relationship():
     ms["rain_mm_h"] = metric("rain_mm_h", 9, 0, None, True, "moderate")
     ms["congestion_pct"] = metric("congestion_pct", 50, 36, 39, True, "low")
     onsets = {"rain_mm_h": NOW - timedelta(minutes=1), "congestion_pct": NOW - timedelta(minutes=8)}
-    rels, _, _ = evaluate_zone(ZoneSignals("F4", "Walled City (F4)", ms, onsets), S)
+    rels, _, _ = evaluate_zone(ZoneSignals("C2-9", "Walled City (C2-9)", ms, onsets), S)
     rel = rels[0]
     assert rel.strength == "weak"
     assert "does not fit" in rel.lead_lag
@@ -158,7 +158,7 @@ def test_response_before_driver_weakens_relationship():
 # ---------------------------------------------------------------------- risk
 
 def anomaly(key: str, severity: str) -> Anomaly:
-    return Anomaly(id=key, zone_id="F4", metric=key, label=METRICS[key].label, severity=severity, current=1,
+    return Anomaly(id=key, zone_id="C2-9", metric=key, label=METRICS[key].label, severity=severity, current=1,
                    baseline=1, deviation_pct=1, unit="", since=NOW, description=f"{key} unusual")
 
 
@@ -167,11 +167,11 @@ def test_potential_disruption_needs_relationship_and_two_serious_anomalies():
     ms["rain_mm_h"] = metric("rain_mm_h", 26, 0, None, True, "high")
     ms["congestion_pct"] = metric("congestion_pct", 64, 36, 78, True, "high")
     onsets = {"rain_mm_h": NOW - timedelta(minutes=4), "congestion_pct": NOW - timedelta(minutes=3)}
-    rels, _, _ = evaluate_zone(ZoneSignals("F4", "Walled City (F4)", ms, onsets), S)
+    rels, _, _ = evaluate_zone(ZoneSignals("C2-9", "Walled City (C2-9)", ms, onsets), S)
     anomalies = [anomaly("rain_mm_h", "high"), anomaly("congestion_pct", "high")]
-    risks = assess_risks("F4", "Walled City (F4)", ms, anomalies, rels, S)
+    risks = assess_risks("C2-9", "Walled City (C2-9)", ms, anomalies, rels, S)
     assert risks[0].kind == "potential_disruption"
-    assert risks[0].headline == "Elevated traffic disruption risk in Walled City (F4)"
+    assert risks[0].headline == "Elevated traffic disruption risk in Walled City (C2-9)"
     assert zone_status(anomalies, rels, risks) == ZoneStatus.RED
 
 
@@ -180,7 +180,7 @@ def test_early_warning_before_traffic_crosses_threshold():
     ms["rain_mm_h"] = metric("rain_mm_h", 20, 0, None, True, "high")
     ms["congestion_pct"] = metric("congestion_pct", 43, 36, 19, False, trend="rising")
     anomalies = [anomaly("rain_mm_h", "high")]
-    risks = assess_risks("F4", "Walled City (F4)", ms, anomalies, [], S)
+    risks = assess_risks("C2-9", "Walled City (C2-9)", ms, anomalies, [], S)
     assert [r.kind for r in risks] == ["early_warning"]
     assert zone_status(anomalies, [], risks) == ZoneStatus.YELLOW
 

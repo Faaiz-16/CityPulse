@@ -8,7 +8,7 @@ minute at a time and records what CityPulse would have shown at each moment. Jud
 back and forth and watch detection happen on past data.
 
 Frames are computed once and cached, so scrubbing is instant and every viewer sees the same
-thing (deterministic). With 81 areas a frame is large, so frames are kept compressed and
+thing (deterministic). With 225 blocks a frame is large, so frames are kept compressed and
 decoded when requested.
 """
 
@@ -177,7 +177,7 @@ class ReplayService:
         for z, m, _, v in readings:
             if m == "rain_mm_h":
                 peak[z] = max(peak.get(z, 0.0), v)
-        return max(peak, key=peak.get) if peak else "E6"
+        return max(peak, key=peak.get) if peak else "C3-8"
 
     def _compute_frames(self, session: ReplaySession, incidents: list[tuple]) -> None:
         engine = AnalysisEngine(self.s, self.baselines)

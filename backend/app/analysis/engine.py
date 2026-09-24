@@ -93,7 +93,7 @@ class AnalysisEngine:
         n_anom = sum(len(z.anomalies) for z in zones)
         n_rel = sum(len([r for r in z.relationships if r.strength != "weak"]) for z in zones)
         city = ZoneStatus.RED if counts["RED"] else ZoneStatus.YELLOW if counts["YELLOW"] else ZoneStatus.GREEN
-        # 81 small areas: a storm lights up several, so both terms are capped (max 138 bpm).
+        # 225 small blocks: a storm lights up several, so both terms are capped (max 138 bpm).
         bpm = 62 + min(40, 3 * n_anom) + min(36, 12 * counts["RED"])
         return PulseInfo(city_status=city, bpm=bpm, active_anomalies=n_anom,
                          active_relationships=n_rel, zones_by_status=counts)

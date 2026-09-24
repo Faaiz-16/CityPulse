@@ -108,28 +108,33 @@ Each normalizer (`normalization/normalizers.py`) does six things per record:
 Timestamps in the future (> 5 min skew) are rejected. For reports, only whitelisted fields
 survive; account IDs and phone numbers are dropped and never stored.
 
-## 5. Areas — Jaipur as a 9 × 9 grid
+## 5. Areas — Jaipur as districts and blocks
 
-Jaipur is divided into **81 square demonstration areas** of about 2.5 km × 2.5 km
-(`geo/zones.py`). Columns **A–I** run west → east and rows **1–9** north → south, like a paper
-map; the Walled City is **F4**. Each area is named after the best-known locality in it
-("Walled City (F4)", "Mansarovar (C7)"); areas with no well-known locality are "Near …". They are
-*not* official wards and the UI says so.
+Jaipur is laid out on a two-level grid (`geo/zones.py`), like a paper map with an inset:
 
-Every area is analysed on its own: it has five simulated sensors (2 traffic sensors placed **on
-real main roads**, 1 rain gauge, 1 air monitor, 1 water-level sensor), its own baselines and its
-own status. Mapping a coordinate to an area is simple arithmetic on the grid.
+- **Districts** — **5 × 5**, about 4.5 km each. Columns **A–E** run west → east and rows **1–5**
+  north → south. Each is named after its best-known locality (C2 = "Walled City").
+- **Blocks** — every district is split into **3 × 3** blocks of about 1.5 km, numbered **1–9** like
+  a phone keypad (1 = north-west, 5 = centre, 9 = south-east). A block ID is `C2-9`: block 9 of
+  district C2. That makes **225 blocks**.
+
+The **block is the unit of analysis**: each has five simulated sensors (2 traffic sensors placed
+**on real main roads**, 1 rain gauge, 1 air monitor, 1 water-level sensor), its own baselines and
+its own status. Districts are how people read the city — names, grid references and labels.
+Blocks are named after a locality inside them ("Walled City (C2-9)", "Mansarovar (B4-5)") or
+after their district and position ("Walled City · north-east"). They are *not* official wards
+and the UI says so. Mapping a coordinate to a block is simple arithmetic on the grid.
 
 Main-road shapes come from **OpenStreetMap** (© OpenStreetMap contributors, ODbL): downloaded
 once, simplified and split at cell edges by `backend/scripts/build_jaipur_roads.py` into
-`geo/jaipur_roads.json` (~90 KB), served at `/api/map`. The map colours each road stretch by its
-area's traffic.
+`geo/jaipur_roads.json` (~95 KB), served at `/api/map`. The map colours each road stretch by its
+block's traffic.
 
-The synthetic city gives each area a character: busier near the Walled City and C-Scheme
+The synthetic city gives each block a character: busier near the Walled City and C-Scheme
 (more traffic and reports), worse air around the VKI and Sitapura industrial areas, cleaner in
-the Nahargarh hills. An event is centred on one cell and reaches its neighbours with decreasing
-strength (Gaussian falloff), so a storm shows up as a realistic **hotspot** — centre red,
-neighbours red or amber — rather than one huge blob.
+the Nahargarh hills. An event is centred on one block and reaches its neighbours with decreasing
+strength (Gaussian falloff), so it shows up as a realistic **hotspot**: heavy rain ≈ 13 blocks (9
+red) around the Walled City, a road accident exactly one block.
 
 ## 6. Baselines — "what is normal here, now?"
 
@@ -165,7 +170,7 @@ Why an absolute rule for rain: normal rainfall is ~0, so "+900 %" is meaningless
 
 Why a Poisson test for reports: reports arrive randomly. Seeing 4 when ~2 are expected happens
 all the time. The Poisson tail probability says how likely a count is *by pure chance*; because
-we check 81 areas × 4 report types every 3 seconds, a strict level (0.1 %) avoids false alarms
+we check 225 blocks × 4 report types every 3 seconds, a strict level (0.1 %) avoids false alarms
 from multiple comparisons (measured: over two simulated rush hours, one area was briefly amber and
 none turned red).
 
@@ -210,9 +215,9 @@ What CityPulse says when there is **no** relationship:
 
 | Insight | Condition | Example headline |
 |---|---|---|
-| **Potential disruption** (high) | ≥ 1 moderate/strong relationship **and** ≥ 2 anomalies of moderate+ severity in the zone | "Elevated traffic disruption risk in Walled City (F4)" |
-| **Early warning** (elevated) — traffic | rain anomalous, congestion ≥ +10 % and **rising**, but below the 30 % threshold | "Traffic may slow in Walled City (F4)" |
-| **Early warning** — water | rain anomalous, water level ≥ half the flag level and rising | "Water may collect on streets in Walled City (F4)" |
+| **Potential disruption** (high) | ≥ 1 moderate/strong relationship **and** ≥ 2 anomalies of moderate+ severity in the zone | "Elevated traffic disruption risk in Walled City (C2-9)" |
+| **Early warning** (elevated) — traffic | rain anomalous, congestion ≥ +10 % and **rising**, but below the 30 % threshold | "Traffic may slow in Walled City (C2-9)" |
+| **Early warning** — water | rain anomalous, water level ≥ half the flag level and rising | "Water may collect on streets in Walled City (C2-9)" |
 
 Early warnings address the brief's pain point "alerts are reactive, not predictive": they fire
 *before* the second signal crosses its threshold, and they say so.
@@ -296,10 +301,10 @@ CHECK FEEDS → CHECK DATA QUALITY → CHECK ANOMALIES → CHECK RELATED SIGNALS
 ## 13. Simulation and demo (`app/simulation/`)
 
 - **Scenario presets** (`scenarios.py`), each at a real Jaipur place: Heavy rainfall (Walled City,
-  F4), Flash flood (Mansarovar, C7), Major congestion (C-Scheme, E4), Road accident (Ajmer Road near
-  Heerapura, B6), Power outage (Malviya Nagar, F7), Poor air quality (VKI Industrial Area, D1),
-  Severe storm (Jagatpura, G8) and Multi-event evening (Walled City + an unrelated jam in Vaishali
-  Nagar, C4, that must *not* be linked to rain). Each is a
+  C2-9), Flash flood (Mansarovar, B4-5), Major congestion (C-Scheme, C3-2), Road accident (Ajmer Road near
+  Heerapura, A3-9), Power outage (Malviya Nagar, C4-6), Poor air quality (VKI Industrial Area, B1-3),
+  Severe storm (Jagatpura, D5-3) and Multi-event evening (Walled City + an unrelated jam in Vaishali
+  Nagar, B3-1, that must *not* be linked to rain). Each is a
   timed list of effects plus a **storyline** of beats (e.g. rain begins → traffic builds → water
   rises → reports → possible relationship → possible disruption).
 - Beats are ticked off from the **actual analysis output** (value, deviation, anomaly flag, link
@@ -354,13 +359,14 @@ stored history ─► find the recorded event (first/last heavy-rain reading in 
 
 ```
 App.tsx  (full-bleed map; everything else floats over it)
-├── CityMap ── 9 × 9 grid (faint lines; soft amber/red tint only on unusual areas) · A–I / 1–9 refs
+├── CityMap ── (canvas) district lines (5 × 5, clear) + block lines (3 × 3, faint) · A–E / 1–5 refs
+│             · district names when zoomed in · soft amber/red tint only on unusual blocks
 │             · one label per hotspot · rain cells · congestion on real OSM roads
 │             · incident clusters (only when unusual) · air haze · IoT sensors
 ├── Header ── logo · PulseChip (heart: colour = worst zone, speed = bpm) · LIVE/DEMO/REPLAY + clock
 │             · DataHealth (one chip, details on click) · Insights · Replay · Demo
 ├── LayerToggles · PulseLegend (collapsible)
-├── AlertsCard ── at most 4 alerts (2 on phones), grouped per hotspot ("Walled City + 4 nearby areas")
+├── AlertsCard ── at most 4 alerts (2 on phones), grouped per hotspot ("Walled City + 12 nearby blocks")
 ├── DemoPill ── scenario progress + playback while the Demo drawer is closed
 ├── Left drawers (closed by default)
 │   ├── DemoDrawer ── Situations (one click → shown instantly; step-by-step option) · Custom · Feed failures
@@ -374,6 +380,14 @@ App.tsx  (full-bleed map; everything else floats over it)
 In replay mode (`useReplay`), every panel reads the current recorded frame instead of the live
 state — the same components render both. `usePolling` keeps the last good data when a request fails and shows a "connection lost" banner
 instead of blanking the screen.
+
+**Smooth map with 225 blocks.** All map shapes are drawn on a **canvas** (`preferCanvas`) rather
+than as SVG elements; the grid is 32 lines, not 225 shapes, and clicks/hover are resolved by grid
+arithmetic. Glows are a wide faint stroke under a line instead of CSS filters, floating panels
+have no `backdrop-filter` blur (re-blurring on every animation frame was the main source of
+zoom lag), tiles are not reloaded mid-zoom, and each layer only redraws when what it shows
+changes (derived lists are kept stable across 3-second polls). Measured: 60 fps (worst frame
+18 ms) while zooming in and out.
 
 **10-second read:** the default view is the map, a slim header and a few alerts. Normal zones are
 faint; attention zones amber; possible disruptions are highlighted red areas with a two-line

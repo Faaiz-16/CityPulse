@@ -36,8 +36,15 @@ log = logging.getLogger("citypulse.pipeline")
 SNAPSHOT_EVERY = timedelta(seconds=15)
 TIMELINE_LENGTH = timedelta(minutes=30)
 WARM_UP = timedelta(minutes=10)
-FAST_FORWARD_STEP = timedelta(seconds=5)
 WARM_UP_MIN_STEP_S = 10  # back-filled normal data doesn't need every 5-second reading
+# Instant scenarios: a shorter, coarser back-fill before the scenario, then 10-second ticks.
+INSTANT_WARM_UP = timedelta(minutes=5)
+INSTANT_WARM_UP_STEP_S = 20
+FAST_FORWARD_STEP = timedelta(seconds=10)
+
+# Back-filled normal data for a given moment. A normal city (no events) is fully deterministic,
+# so pipelines restarted in the same process at the same moment (tests, reset) can reuse it.
+_WARM_CACHE: dict[tuple, list[tuple[str, list, list, datetime]]] = {}
 LIVE_DB_KEEP = timedelta(hours=1)
 
 
@@ -82,29 +89,40 @@ class CityPulse:
         self.warm_up(now)
         self.tick(now)
 
-    def warm_up(self, now: datetime) -> None:
+    def warm_up(self, now: datetime, span: timedelta = WARM_UP, min_step_s: float = WARM_UP_MIN_STEP_S) -> None:
         """Fill the rolling window with the last few minutes so analysis is meaningful at once."""
-        for spec in FEEDS:
-            if self.feeds.uses_live(spec):
-                continue
-            t = now - WARM_UP
-            step = timedelta(seconds=max(spec.interval_s, WARM_UP_MIN_STEP_S))
-            while t < now - step:
-                ctx = Context(self.s.tz, t, DataStatus.SIMULATED, SYNTHETIC_PROVIDER)
-                result = spec.synthetic(self.model, t - step, t, False, ctx)
-                self.store.add_readings(result.readings)
-                self.store.add_incidents(result.incidents)
-                t += step
-            state = self.feeds.state[spec.id]
-            state.last_success_at = t - step
+        specs = [spec for spec in FEEDS if not self.feeds.uses_live(spec)]
+        key = (self.s.random_seed, now, span, min_step_s, tuple(spec.id for spec in specs))
+        chunks = _WARM_CACHE.get(key) if not self.model.effects else None
+        if chunks is None:
+            chunks = []
+            for spec in specs:
+                readings, incidents = [], []
+                t = now - span
+                step = timedelta(seconds=max(spec.interval_s, min_step_s))
+                while t < now - step:
+                    ctx = Context(self.s.tz, t, DataStatus.SIMULATED, SYNTHETIC_PROVIDER)
+                    result = spec.synthetic(self.model, t - step, t, False, ctx)
+                    readings += result.readings
+                    incidents += result.incidents
+                    t += step
+                chunks.append((spec.id, readings, incidents, t - step))
+            if not self.model.effects:
+                _WARM_CACHE.clear()
+                _WARM_CACHE[key] = chunks
+        for spec_id, readings, incidents, last in chunks:
+            self.store.add_readings(readings)
+            self.store.add_incidents(incidents)
+            state = self.feeds.state[spec_id]
+            state.last_success_at = last
             state.last_poll_at = None
 
     # ---------------------------------------------------------------------- tick
-    def tick(self, now: datetime | None = None) -> CityState:
+    def tick(self, now: datetime | None = None, persist: bool = True) -> CityState:
         with self._lock:
             now = now or datetime.now(UTC)
             try:
-                return self._tick(now)
+                return self._tick(now, persist)
             except Exception as exc:  # keep serving the previous state rather than crashing
                 self.last_tick_error = exc.__class__.__name__
                 log.exception("pipeline tick failed")
@@ -112,7 +130,7 @@ class CityPulse:
                     raise
                 return self.state
 
-    def _tick(self, now: datetime) -> CityState:
+    def _tick(self, now: datetime, persist: bool = True) -> CityState:
         for line in self.sim.advance(now):
             self._ticker(now, None, "simulation", line)
         # Forget finished events; live APIs pause only while a simulated event is active.
@@ -123,7 +141,8 @@ class CityPulse:
         result, _ = self.feeds.poll(now)
         self.store.add_readings(result.readings)
         new_incidents = self.store.add_incidents(result.incidents)
-        self.db.save_live(result.readings, new_incidents)
+        if persist:  # fast-forwarded (instant-scenario) ticks are, like the warm-up, not persisted
+            self.db.save_live(result.readings, new_incidents)
         self.store.prune(now)
 
         feed_health = self.feeds.health(now)
@@ -175,7 +194,7 @@ class CityPulse:
             now = now or datetime.now(UTC)
             preset = self.sim.preset(preset_id)  # validates before anything is reset
             start = now - timedelta(seconds=preset.ready_s) if instant else now
-            self._clear(start)
+            self._clear(start, quick=instant)
             scenario = self.sim.start_scenario(preset.id, start)
             self.db.save_simulation_event(now, "scenario", scenario.focus_zone,
                                           {"preset": preset.id, "instant": instant})
@@ -183,7 +202,7 @@ class CityPulse:
             t = start
             while t < now:
                 t = min(t + FAST_FORWARD_STEP, now)
-                self.tick(t)
+                self.tick(t, persist=t >= now)
             if not instant:
                 self.tick(now)
             return scenario.name
@@ -237,7 +256,7 @@ class CityPulse:
                 self._ticker(now, None, "simulation", "Simulation reset: the city is back to normal.")
             self.tick(now)
 
-    def _clear(self, now: datetime) -> None:
+    def _clear(self, now: datetime, quick: bool = False) -> None:
         """Back to a normal city at ``now``: no events or faults, fresh live data."""
         self.sim.clear()
         self.feeds.clear_faults()
@@ -247,7 +266,10 @@ class CityPulse:
         self.timeline.clear()
         self._last_snapshot = None
         self.db.clear_live()
-        self.warm_up(now)
+        if quick:
+            self.warm_up(now, INSTANT_WARM_UP, INSTANT_WARM_UP_STEP_S)
+        else:
+            self.warm_up(now)
 
     # ------------------------------------------------------------------- views
     def zone_detail(self, zone_id: str) -> dict:

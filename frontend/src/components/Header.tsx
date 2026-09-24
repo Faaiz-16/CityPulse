@@ -58,8 +58,8 @@ function PulseChip({ state }: { state: CityState }) {
   const meta = STATUS_META[state.pulse.city_status];
   const word = state.pulse.city_status === "GREEN" ? "City normal" : meta.word;
   const { RED = 0, YELLOW = 0 } = state.pulse.zones_by_status;
-  const detail = RED + YELLOW === 0 ? "All 81 areas normal"
-    : [RED && `${RED} area${RED > 1 ? "s" : ""} disrupted`, YELLOW && `${YELLOW} need${YELLOW > 1 ? "" : "s"} attention`].filter(Boolean).join(" · ");
+  const detail = RED + YELLOW === 0 ? "All 25 districts normal"
+    : [RED && `${RED} block${RED > 1 ? "s" : ""} disrupted`, YELLOW && `${YELLOW} need${YELLOW > 1 ? "" : "s"} attention`].filter(Boolean).join(" · ");
   return (
     <div className="flex items-center gap-2.5 rounded-xl px-2.5 py-1" style={{ background: `color-mix(in srgb, ${meta.color} 10%, transparent)` }}
       role="status" aria-label={`City pulse: ${word}. ${detail}. ${state.pulse.bpm} beats per minute.`}>

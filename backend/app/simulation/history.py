@@ -4,7 +4,7 @@ Used for two things:
   * learning baselines ("what does traffic in Raja Park normally look like at 6 p.m.?")
   * historical replay of a recorded storm (yesterday evening, over the south-centre of Jaipur)
 
-History is sampled every 5 minutes from the same deterministic city model. Around the recorded
+History is sampled every 10 minutes from the same deterministic city model (225 blocks). Around the recorded
 storm it is also archived at **1-minute** resolution (provider ``ARCHIVE_PROVIDER``) so replay has
 enough detail for a 10-minute rolling window. Those extra rows are excluded from baseline
 learning so the storm period is not over-represented in "normal".
@@ -18,7 +18,7 @@ from app.data_sources.incidents import request_id
 from app.geo.zones import ZONE_IDS
 from app.normalization.units import pm25_to_us_aqi
 
-HISTORY_STEP = timedelta(minutes=5)
+HISTORY_STEP = timedelta(minutes=10)
 ARCHIVE_STEP = timedelta(minutes=1)
 HISTORY_PROVIDER = "synthetic history"
 ARCHIVE_PROVIDER = "recorded archive (1-min)"
@@ -40,10 +40,10 @@ def recorded_storm_window(now: datetime, model: CityModel) -> tuple[datetime, da
 def storm_effects(now: datetime, model: CityModel) -> list[Effect]:
     start, _ = recorded_storm_window(now, model)
     return [
-        Effect("heavy_rain", "E6", start + timedelta(minutes=15), ramp_s=600, hold_s=2400, fade_s=900,
+        Effect("heavy_rain", "C3-8", start + timedelta(minutes=15), ramp_s=600, hold_s=2400, fade_s=900,
                label="Recorded storm (Tonk Phatak)", lag_scale=15),
-        Effect("heavy_rain", "F7", start + timedelta(minutes=30), ramp_s=600, hold_s=1500, fade_s=900,
-               intensity=0.7, spread=0.8, label="Recorded storm (Malviya Nagar)", lag_scale=15),
+        Effect("heavy_rain", "C4-6", start + timedelta(minutes=30), ramp_s=600, hold_s=1500, fade_s=900,
+               intensity=0.7, label="Recorded storm (Malviya Nagar)", lag_scale=15),
     ]
 
 
@@ -54,11 +54,11 @@ def generate_history(model: CityModel, now: datetime, days: int) -> tuple[list[d
     dense_from, dense_to = storm_start - timedelta(minutes=30), storm_end + timedelta(minutes=15)
     end = now - timedelta(minutes=15)
     t = (end - timedelta(days=days)).replace(second=0, microsecond=0)
-    t -= timedelta(minutes=t.minute % 5)  # align to 5-minute marks
+    t -= timedelta(minutes=t.minute % 10)  # align to 10-minute marks
     readings, incidents = [], []
     while t < end:
         step = ARCHIVE_STEP if dense_from <= t < dense_to else HISTORY_STEP
-        provider = HISTORY_PROVIDER if t.minute % 5 == 0 else ARCHIVE_PROVIDER
+        provider = HISTORY_PROVIDER if t.minute % 10 == 0 else ARCHIVE_PROVIDER
         for zone in ZONE_IDS:
             values = {m: history_model.value(zone, m, t, key="hist") for m in
                       ("rain_mm_h", "temperature_c", "wind_kmh", "congestion_pct", "transit_delay_min",

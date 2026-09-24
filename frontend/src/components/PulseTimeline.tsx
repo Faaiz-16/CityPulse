@@ -3,7 +3,7 @@ import { clockTime } from "../utils/format";
 import { MAP_STATUS } from "./map/mapColors";
 
 /**
- * Heat-map timeline: one row per affected area, one cell per 15-second snapshot over the last
+ * Heat-map timeline: one row per affected block, one cell per 15-second snapshot over the last
  * 30 minutes. Shows how the situation developed — where trouble started and how long it lasted.
  */
 export function PulseTimeline({ timeline, zones, onSelectZone }: {
@@ -23,12 +23,12 @@ export function PulseTimeline({ timeline, zones, onSelectZone }: {
   return (
     <div className="panel pointer-events-auto p-3">
       <div className="mb-2 flex items-center justify-between gap-3">
-        <h2 className="label-caps">Affected areas over time</h2>
+        <h2 className="label-caps">Affected blocks over time</h2>
         <span className="font-mono text-[10px] text-[var(--faint)]">
           {first ? `${clockTime(first, false)} → ${clockTime(last, false)}` : "collecting…"}
         </span>
       </div>
-      {rows.length === 0 && <p className="text-[12px] text-[var(--muted)]">Every area has been normal for the last 30 minutes.</p>}
+      {rows.length === 0 && <p className="text-[12px] text-[var(--muted)]">Every block has been normal for the last 30 minutes.</p>}
       <div className="space-y-1" role="table" aria-label="Area status history">
         {rows.map((z) => (
           <div key={z.id} className="flex items-center gap-2" role="row">

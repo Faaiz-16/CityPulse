@@ -17,9 +17,9 @@ import { clockTime } from "./utils/format";
 
 const POLL_MS = 3000;
 
-// Deep links: ?zone=F4 opens an area; ?replay=1&frame=30 opens the replay at a recorded minute.
+// Deep links: ?zone=C2-9 opens a block; ?replay=1&frame=30 opens the replay at a recorded minute.
 const params = new URLSearchParams(window.location.search);
-const INITIAL_ZONE = /^[A-I][1-9]$/.test(params.get("zone") ?? "") ? params.get("zone") : null;
+const INITIAL_ZONE = /^[A-E][1-5]-[1-9]$/.test(params.get("zone") ?? "") ? params.get("zone") : null;
 const INITIAL_REPLAY = params.get("replay") === "1";
 const INITIAL_FRAME = Number(params.get("frame") ?? 0) || 0;
 const INITIAL_DRAWER = params.get("demo") === "1" ? "demo" : params.get("insights") === "1" ? "insights" : null;
@@ -73,6 +73,10 @@ export default function App() {
     [inReplay, replayIndex],
   );
   const alerts = useMemo(() => (state ? deriveAlerts(state) : []), [state]);
+  const districtNames = useMemo(
+    () => Object.fromEntries((boundaries.data ?? []).map((b) => [b.district, b.district_name])) as Record<string, string>,
+    [boundaries.data],
+  );
 
   if (!state || (replay.active && !replay.state)) {
     return (
@@ -143,7 +147,7 @@ export default function App() {
           <div className="absolute bottom-3 left-3 top-[76px] flex max-w-[calc(100%-24px)]">
             {drawer === "demo" && !inReplay && (
               <DemoDrawer sim={sim} zones={state.zones} feeds={state.feeds} onClose={closeDrawer} onChanged={refreshAll}
-                onStartReplay={startReplay} onShow={showSituation} />
+                onStartReplay={startReplay} onShow={showSituation} districtNames={districtNames} />
             )}
             {drawer === "insights" && (
               <InsightsDrawer state={state} timeline={timeline.data ?? []} now={now}
@@ -155,7 +159,8 @@ export default function App() {
         {/* right: the zone story, only when asked for */}
         {zone && (
           <div className="absolute bottom-3 right-3 top-[76px] z-10 flex max-w-[calc(100%-24px)]">
-            <ZonePanel key={zone.id} zone={zone} feeds={state.feeds} now={now} loadDetail={loadDetail} onClose={closeZone} />
+            <ZonePanel key={zone.id} zone={zone} feeds={state.feeds} now={now} loadDetail={loadDetail} onClose={closeZone}
+              district={districtNames[zone.id.slice(0, 2)]} />
           </div>
         )}
 

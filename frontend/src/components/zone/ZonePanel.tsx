@@ -25,6 +25,7 @@ interface Props {
   now: number;
   loadDetail: (zoneId: string) => Promise<ZoneDetail>;
   onClose: () => void;
+  district?: string; // name of the district the block belongs to
 }
 
 function Block({ title, tag, children }: { title: string; tag?: React.ReactNode; children: React.ReactNode }) {
@@ -55,7 +56,7 @@ const PLAIN: Record<string, { icon: LucideIcon; say: (dev: number | null) => str
 const SIMPLE_WORD = { GREEN: "All normal here", YELLOW: "Needs attention", RED: "Possible disruption" } as const;
 
 /**
- * Opens when an area is clicked. First a 10-second answer — how is it, what would I notice,
+ * Opens when a block is clicked. First a 10-second answer — how is it, what would I notice,
  * what should I do — and one button for the full explanation with the evidence behind it.
  */
 export function ZonePanel(props: Props) {
@@ -63,14 +64,15 @@ export function ZonePanel(props: Props) {
   return detailed ? <DetailedView {...props} onBack={() => setDetailed(false)} /> : <SimpleView {...props} onExplain={() => setDetailed(true)} />;
 }
 
-function SimpleView({ zone, onClose, onExplain }: Props & { onExplain: () => void }) {
+function SimpleView({ zone, district, onClose, onExplain }: Props & { onExplain: () => void }) {
   const meta = STATUS_META[zone.status];
   const StatusIcon = meta.icon;
   const seen = new Set<string>();
   const notice = zone.anomalies.filter((a) => PLAIN[a.metric] && !seen.has(PLAIN[a.metric].say(a.deviation_pct)) && seen.add(PLAIN[a.metric].say(a.deviation_pct))).slice(0, 3);
   const advice = [...new Set(zone.risks.map((r) => r.resident_advice))][0];
   return (
-    <Drawer side="right" width="w-[360px]" title={zone.short_name} subtitle={`Area ${zone.id} · Jaipur`}
+    <Drawer side="right" width="w-[360px]" title={zone.short_name}
+      subtitle={`Block ${zone.id}${district ? ` · ${district} district` : ""} · Jaipur`}
       icon={<StatusIcon size={19} className="mt-0.5" color={meta.color} aria-hidden />} onClose={onClose}>
       <div className="space-y-4 p-4">
         <div className="rounded-2xl px-4 py-3.5" style={{ background: `color-mix(in srgb, ${meta.color} 12%, transparent)`, border: `1px solid color-mix(in srgb, ${meta.color} 40%, transparent)` }}>
@@ -149,7 +151,7 @@ function DetailedView({ zone, feeds, now, loadDetail, onClose, onBack }: Props &
 
       <Block title="What's happening" tag={d ? <SourceTag by={d.explanation_by} /> : undefined}>
         <p className="text-[13.5px] leading-relaxed text-[#dbe4ee]">
-          {d?.explanation?.whats_happening ?? (zone.status === "GREEN" ? "Everything in this area is within its normal range for this time of day." : zone.headline)}
+          {d?.explanation?.whats_happening ?? (zone.status === "GREEN" ? "Everything in this block is within its normal range for this time of day." : zone.headline)}
         </p>
       </Block>
 

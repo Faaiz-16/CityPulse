@@ -1,11 +1,16 @@
-"""Jaipur as a 9 × 9 grid of demonstration areas, plus simple geometry helpers.
+"""Jaipur as a 5 × 5 grid of districts, each split into 3 × 3 blocks, plus geometry helpers.
 
-The city is divided into 81 square cells of about 2.5 km × 2.5 km. Columns A–I run west → east
-and rows 1–9 run north → south, like a paper city map: the Walled City is **F4**. Every cell is
-an area in its own right — it has its own sensors, its own baselines and its own status.
+Two levels, like a paper city map with an inset:
 
-Each cell is named after the best-known locality inside it; cells with no well-known locality
-are called "Near <closest locality>". Cells are **demonstration areas**, not official wards.
+* **Districts** — 5 × 5, about 4.5 km each. Columns A–E run west → east, rows 1–5 north → south.
+  Each district is named after its best-known locality (C2 = "Walled City").
+* **Blocks** — every district is split into 3 × 3 blocks of about 1.5 km, numbered 1–9 like a
+  phone keypad (1 = north-west, 5 = centre, 9 = south-east). Block IDs look like ``C2-5``.
+
+The **block** is the unit of analysis: all 225 blocks have their own sensors, baselines and
+status. Districts are how people read the city: labels, grouping and names. Blocks are named
+after a locality inside them, or after their district and position ("Walled City · north-east").
+They are **demonstration areas**, not official wards.
 
 Main-road shapes come from OpenStreetMap (© OpenStreetMap contributors, ODbL) — see
 ``jaipur_roads.json`` and ``scripts/build_jaipur_roads.py``. Traffic sensors sit on those roads.
@@ -21,12 +26,15 @@ from pathlib import Path
 # ------------------------------------------------------------------ the grid
 
 GRID_NORTH, GRID_WEST = 26.996, 75.692  # top-left corner
-CELL_LAT, CELL_LON = 0.0225, 0.0252  # ≈ 2.5 km each way at Jaipur's latitude
-ROWS = COLS = 9
-COL_LETTERS = "ABCDEFGHI"
+DISTRICTS = 5  # 5 × 5 districts
+BLOCKS = 3  # each district = 3 × 3 blocks
+ROWS = COLS = DISTRICTS * BLOCKS  # 15 × 15 blocks in total
+CELL_LAT, CELL_LON = 0.0135, 0.01512  # one block ≈ 1.5 km each way at Jaipur's latitude
+COL_LETTERS = "ABCDE"
 GRID_SOUTH = GRID_NORTH - ROWS * CELL_LAT
 GRID_EAST = GRID_WEST + COLS * CELL_LON
 CITY_CENTER = ((GRID_NORTH + GRID_SOUTH) / 2, (GRID_WEST + GRID_EAST) / 2)
+POSITIONS = ("north-west", "north", "north-east", "west", "centre", "east", "south-west", "south", "south-east")
 
 # Well-known localities (lat, lon). Earlier entries win when two fall in the same cell.
 LOCALITIES: tuple[tuple[str, float, float], ...] = (
@@ -52,12 +60,18 @@ LOCALITIES: tuple[tuple[str, float, float], ...] = (
 )
 
 
+def district_ref(row: int, col: int) -> str:
+    """District of a block (global block row/col): "C2"."""
+    return f"{COL_LETTERS[col // BLOCKS]}{row // BLOCKS + 1}"
+
+
 def cell_ref(row: int, col: int) -> str:
-    return f"{COL_LETTERS[col]}{row + 1}"
+    """Block ID from global block row/col (0–14): "C2-5" = the centre block of district C2."""
+    return f"{district_ref(row, col)}-{(row % BLOCKS) * BLOCKS + col % BLOCKS + 1}"
 
 
 def cell_of(lat: float, lon: float) -> tuple[int, int] | None:
-    """(row, col) of the cell containing the point, or None outside the grid."""
+    """(row, col) of the block containing the point, or None outside the grid."""
     row = math.floor((GRID_NORTH - lat) / CELL_LAT)
     col = math.floor((lon - GRID_WEST) / CELL_LON)
     return (row, col) if 0 <= row < ROWS and 0 <= col < COLS else None
@@ -111,13 +125,15 @@ def _length(path: list[list[float]]) -> float:
 
 @dataclass(frozen=True)
 class Zone:
-    id: str  # grid reference, e.g. "F4"
-    number: int  # 1…81 in reading order (sorting only)
-    name: str  # "Walled City (F4)"
+    id: str  # block reference, e.g. "C2-5"
+    number: int  # 1…225 in reading order (sorting only)
+    name: str  # "Walled City (C2-5)"
     short_name: str  # "Walled City"
-    row: int
-    col: int
+    row: int  # global block row, 0 (north) … 14
+    col: int  # global block column, 0 (west) … 14
     polygon: tuple[tuple[float, float], ...]
+    district: str = ""  # "C2"
+    district_name: str = ""  # "Walled City"
     # Where the map label sits
     label_point: tuple[float, float] = (0.0, 0.0)
     # Sensors placed inside the area for the IoT layer: (sensor_id, kind, lat, lon)
@@ -132,7 +148,27 @@ class Zone:
         return ring + [ring[0]]
 
 
-def _locality_names() -> dict[tuple[int, int], str]:
+def _nearest(lat: float, lon: float) -> str:
+    return min(LOCALITIES, key=lambda loc: (loc[1] - lat) ** 2 + ((loc[2] - lon) * 0.89) ** 2)[0]
+
+
+def _district_names() -> dict[str, str]:
+    named: dict[str, str] = {}
+    for name, lat, lon in LOCALITIES:
+        cell = cell_of(lat, lon)
+        if cell is not None:
+            named.setdefault(district_ref(*cell), name)
+    for dr in range(DISTRICTS):
+        for dc in range(DISTRICTS):
+            ref = f"{COL_LETTERS[dc]}{dr + 1}"
+            if ref not in named:
+                clat, clon = cell_center(dr * BLOCKS + 1, dc * BLOCKS + 1)
+                named[ref] = f"Near {_nearest(clat, clon)}"
+    return named
+
+
+def _block_names(districts: dict[str, str]) -> dict[tuple[int, int], str]:
+    """A locality inside the block, else "<district> · <position>" (e.g. "Walled City · north-east")."""
     named: dict[tuple[int, int], str] = {}
     for name, lat, lon in LOCALITIES:
         cell = cell_of(lat, lon)
@@ -142,9 +178,8 @@ def _locality_names() -> dict[tuple[int, int], str]:
         for col in range(COLS):
             if (row, col) in named:
                 continue
-            clat, clon = cell_center(row, col)
-            nearest = min(LOCALITIES, key=lambda loc: (loc[1] - clat) ** 2 + ((loc[2] - clon) * 0.89) ** 2)
-            named[(row, col)] = f"Near {nearest[0]}"
+            district = districts[district_ref(row, col)]
+            named[(row, col)] = f"{district} · {POSITIONS[(row % BLOCKS) * BLOCKS + col % BLOCKS]}"
     return named
 
 
@@ -162,18 +197,19 @@ def _sensors(ref: str, row: int, col: int, on_roads: list[tuple[float, float]]) 
 
 
 def _build_zones() -> tuple[Zone, ...]:
-    names = _locality_names()
+    districts = _district_names()
+    names = _block_names(districts)
     road_points = _road_points(load_roads())
     zones = []
     for row in range(ROWS):
         for col in range(COLS):
             ref = cell_ref(row, col)
             n, s, w, e = cell_bounds(row, col)
-            locality = names[(row, col)]
+            short = names[(row, col)]
             zones.append(Zone(
-                id=ref, number=row * COLS + col + 1, name=f"{locality} ({ref})", short_name=locality,
-                row=row, col=col, polygon=((n, w), (n, e), (s, e), (s, w)),
-                label_point=cell_center(row, col),
+                id=ref, number=row * COLS + col + 1, name=f"{short} ({ref})", short_name=short,
+                row=row, col=col, district=district_ref(row, col), district_name=districts[district_ref(row, col)],
+                polygon=((n, w), (n, e), (s, e), (s, w)), label_point=cell_center(row, col),
                 sensors=_sensors(ref, row, col, road_points.get(ref, [])),
             ))
     return tuple(zones)
@@ -189,12 +225,12 @@ SENSOR_REGISTRY: dict[str, tuple[str, str, float, float]] = {
 
 
 def cell_distance(a: str, b: str) -> float:
-    """Distance between two cells' centres, in cells (neighbours = 1, diagonal ≈ 1.41)."""
+    """Distance between two blocks' centres, in blocks (neighbours = 1, diagonal ≈ 1.41)."""
     za, zb = ZONES_BY_ID[a], ZONES_BY_ID[b]
     return math.hypot(za.row - zb.row, za.col - zb.col)
 
 
 def zone_for_point(lat: float, lon: float) -> str | None:
-    """Return the area containing the point, or None if it is outside the grid."""
+    """Return the block containing the point, or None if it is outside the grid."""
     cell = cell_of(lat, lon)
     return cell_ref(*cell) if cell else None

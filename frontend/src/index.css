@@ -7,8 +7,9 @@
   --bg: #05080d;
   --panel: #0c1118;
   --panel-2: #121a24;
-  --glass: rgba(10, 15, 22, 0.78);
-  --glass-strong: rgba(10, 15, 22, 0.92);
+  /* Opaque enough to read without a backdrop blur (blur over a moving map is costly). */
+  --glass: rgba(10, 15, 22, 0.9);
+  --glass-strong: rgba(10, 15, 22, 0.96);
   --line: rgba(148, 163, 184, 0.16);
   --line-soft: rgba(148, 163, 184, 0.08);
   --text: #e8eef5;
@@ -61,22 +62,17 @@ body {
   background: var(--glass);
   border: 1px solid var(--line);
   border-radius: 14px;
-  backdrop-filter: blur(14px) saturate(1.2);
-  -webkit-backdrop-filter: blur(14px) saturate(1.2);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 }
 .glass-strong {
   background: var(--glass-strong);
   border: 1px solid var(--line);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
 }
 /* kept for components that used the old name */
 .panel {
   background: var(--glass);
   border: 1px solid var(--line);
   border-radius: 14px;
-  backdrop-filter: blur(14px);
 }
 
 .label-caps {
@@ -143,28 +139,8 @@ body {
   border: none;
 }
 
-/* Glows are reserved for small things that matter (rain cells, jammed roads) — never whole areas. */
-.cp-rain-drop {
-  filter: drop-shadow(0 0 5px rgba(56, 189, 248, 0.95));
-}
-.cp-traffic-hot {
-  filter: drop-shadow(0 0 3px rgba(248, 113, 113, 0.7));
-}
-.cp-traffic-warm {
-  filter: drop-shadow(0 0 2px rgba(251, 146, 60, 0.5));
-}
-.cp-haze {
-  filter: blur(14px);
-}
-
-/* A disrupted area "breathes" gently: the only continuous animation on the map. */
-@keyframes cp-breathe {
-  0%, 100% { stroke-opacity: 0.8; fill-opacity: 0.1; }
-  50% { stroke-opacity: 0.45; fill-opacity: 0.17; }
-}
-.cp-cell-red {
-  animation: cp-breathe 2.4s ease-in-out infinite;
-}
+/* Map vectors are drawn on a canvas (fast zooming), so glows are drawn as a wide, faint stroke
+   under each line instead of CSS filters. */
 
 @keyframes cp-heart {
   0%, 60%, 100% { transform: scale(1); }
@@ -203,7 +179,6 @@ input[type="range"].cp-range {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cp-cell-red,
   .cp-heart,
   .cp-fade-in,
   .cp-slide-left,

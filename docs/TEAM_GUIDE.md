@@ -53,13 +53,14 @@ Built with **React** (a library for building UIs out of reusable components) and
 (JavaScript with types, which catches mistakes early), bundled by **Vite**, styled with
 **Tailwind CSS** (utility classes like `p-3` for padding).
 
-- **Map (the hero):** Jaipur fills the screen, with a 9 × 9 grid of areas (A–I across, 1–9 down).
+- **Map (the hero):** Jaipur fills the screen in 5 × 5 districts (A–E across, 1–5 down), each split
+  into 3 × 3 blocks.
   Normal areas are just faint lines; unusual areas get a soft amber or red tint; one label per
   hotspot. Rain cells, congestion drawn on real roads, incident icons (only when unusual), an
   air-quality haze and optional IoT sensors.
 - **Header:** logo, a beating heart (colour = worst area, speed = how much is unusual), the mode
   (LIVE / DEMO / REPLAY) and clock, one data-health chip, and the Insights / Replay / Demo buttons.
-- **Active alerts:** at most four, grouped per hotspot ("Walled City + 4 nearby areas"); click one
+- **Active alerts:** at most four, grouped per hotspot ("Walled City + 12 nearby blocks"); click one
   to jump there.
 - **Area panel:** click an area — first a 10-second answer (status, "What you'd notice", "What to
   do"); **Explain in detail** shows what's happening, the evidence and the possible relationship,
@@ -119,7 +120,7 @@ the map keeps working. Details: [DATABASE.md](DATABASE.md).
 | `"temp_f": 86.1` | `temperature_c = 30.1 °C` |
 | `"precip_mm_15min": 2.0` | `rain_mm_h = 8.0 mm/h` |
 | `"speedKph": 22.5, "freeFlowKph": 45` | `congestion_pct = 50 %` |
-| `"R-32A,R4C6,420,24/09/2026 15:07"` (CSV) | area F4 (depot code R4C6 → F4), `transit_delay_min = 7`, UTC time |
+| `"R-84A,R6C9,420,24/09/2026 15:07"` (CSV) | block C2-9 (depot code R6C9 → C2-9), `transit_delay_min = 7`, UTC time |
 | `"epochMs": 1790242200000` | `2026-09-24T09:30:00Z` |
 | Open311 report with `account_id`, `contact_phone` | anonymous report — personal fields dropped |
 
@@ -171,9 +172,9 @@ related, we say "insufficient evidence". Code: `backend/app/analysis/correlation
 ## 14. Possible-impact prediction
 
 - **Early warning:** rain is heavy and traffic is already rising (≥ +10 %) but hasn't hit the
-  30 % threshold → "Traffic may slow in Walled City (F4)". Similar for rising street water.
+  30 % threshold → "Traffic may slow in Walled City (C2-9)". Similar for rising street water.
 - **Potential disruption:** a moderate/strong relationship **and** two or more serious anomalies
-  → "Elevated traffic disruption risk in Walled City (F4)" + advice for residents.
+  → "Elevated traffic disruption risk in Walled City (C2-9)" + advice for residents.
 
 Zone colour: **red** for potential disruption, **amber** for any anomaly/link/warning, **green**
 otherwise. Code: `backend/app/analysis/risk.py`.
@@ -218,10 +219,11 @@ Code: `backend/app/simulation/`. Script: [DEMO.md](DEMO.md).
 ## 18. The map
 
 **Leaflet** draws the map; the background tiles come from **OpenStreetMap** (free, no key),
-darkened with a CSS filter. Jaipur is split into a **9 × 9 grid** of ~2.5 km demonstration areas
-(A1–I9, named after localities, e.g. Walled City = F4) — not official wards (the legend says so).
-Normal areas are just faint grid lines; unusual areas get a soft amber/red tint. Touching unusual
-areas form one **hotspot** with one label ("Walled City · Possible disruption · 5 areas").
+darkened with a CSS filter. Jaipur is split into **5 × 5 districts** (A1–E5, named after localities, e.g. Walled City = C2),
+each split into **3 × 3 blocks** of ~1.5 km (`C2-9`) — not official wards (the legend says so).
+Normal blocks are just faint grid lines; unusual blocks get a soft amber/red tint. Touching unusual
+blocks form one **hotspot** with one label ("Walled City · Possible disruption · 13 blocks"). The
+map is drawn on a canvas, so zooming stays smooth.
 Congestion is drawn on Jaipur's real main roads (OpenStreetMap). Clicking an area zooms to it and
 opens a simple panel; "Explain in detail" shows the evidence.
 Code: `frontend/src/components/map/`.

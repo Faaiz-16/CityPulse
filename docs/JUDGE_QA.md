@@ -114,7 +114,7 @@ how far past the threshold it is. Example: 147 vs 100 → +47 % → anomaly, mod
 **Short:** Reports arrive randomly; a few extra is normal. We only flag a spike if it's very
 unlikely by chance.
 **Detailed:** We compute the Poisson probability of seeing that many reports given the normal
-rate. Because we check 81 areas × 4 report types every 3 seconds, we use a strict 0.1 % level to
+rate. Because we check 225 blocks × 4 report types every 3 seconds, we use a strict 0.1 % level to
 avoid false alarms from multiple comparisons. We tuned this after seeing false alarms in testing.
 
 ### 15. What is the rolling window?
@@ -129,7 +129,7 @@ window and timing that fits — co-occurrence alone is never enough.
 **Detailed:** Only six plausible rules exist (rain→traffic, rain→flooding, outages→traffic,
 accident→traffic, traffic→bus delays, traffic→air quality). Evidence is scored for severity, timing, co-movement and supporting
 signals; weak evidence is labelled "insufficient". In the demo, an unrelated traffic jam in
-Vaishali Nagar (C4) is *not* linked to the rain over the Walled City (F4).
+Vaishali Nagar (B3-1) is *not* linked to the rain over the Walled City (C2-9).
 **Technical:** `analysis/correlation.py`; score ≥ 0.8 strong, ≥ 0.6 moderate.
 
 ### 17. How do you distinguish correlation from causation?
@@ -235,8 +235,8 @@ network blips automatically.
 ### 32. How would it scale to a real city?
 **Short:** Run the same pipeline per district, move to PostgreSQL, and put real feeds behind the
 same normalizers.
-**Detailed:** Each 3-second tick already analyses all 81 Jaipur grid areas (~405 sensors) in about
-30 ms; the design is per-area, so larger grids parallelize naturally. For a large city: a message queue for ingestion, a time-series database
+**Detailed:** Each 3-second tick already analyses all 225 Jaipur blocks (~1,125 sensors) in about
+80 ms; the design is per-area, so larger grids parallelize naturally. For a large city: a message queue for ingestion, a time-series database
 (e.g. TimescaleDB), a cache in front of the read API.
 
 ## Scope and honesty about the project

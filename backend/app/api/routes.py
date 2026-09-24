@@ -30,7 +30,7 @@ def _state(p: CityPulse) -> CityState:
 
 def _zone_or_404(zone_id: str) -> str:
     if zone_id not in ZONE_IDS:
-        raise HTTPException(404, f"Unknown area {zone_id!r}. Areas are grid cells A1–I9.")
+        raise HTTPException(404, f"Unknown block {zone_id!r}. Blocks look like C2-5 (district A1–E5, block 1–9).")
     return zone_id
 
 
@@ -64,6 +64,7 @@ def zones(p: CityPulse = Depends(get_pipeline)):
     by_id = {z.id: z for z in p.state.zones}
     return [
         {"id": z.id, "number": z.number, "name": z.name, "short_name": z.short_name, "row": z.row, "col": z.col,
+         "district": z.district, "district_name": z.district_name,
          "status": by_id[z.id].status, "status_label": by_id[z.id].status_label,
          "headline": by_id[z.id].headline, "centroid": z.centroid, "anchor": z.label_point,
          "boundary": {"type": "Polygon", "coordinates": [z.geojson_ring()]}}
@@ -76,11 +77,12 @@ _ROADS = load_roads()
 
 @router.get("/map")
 def city_map():
-    """Static map furniture: the grid and the main roads (clipped per cell) for traffic overlays."""
+    """Static map furniture: the district/block grid and the main roads (per block) for traffic overlays."""
     return {
         "city": "Jaipur",
         "grid": {"north": grid.GRID_NORTH, "south": grid.GRID_SOUTH, "west": grid.GRID_WEST, "east": grid.GRID_EAST,
-                 "rows": grid.ROWS, "cols": grid.COLS, "col_letters": grid.COL_LETTERS},
+                 "rows": grid.ROWS, "cols": grid.COLS, "districts": grid.DISTRICTS, "blocks": grid.BLOCKS,
+                 "col_letters": grid.COL_LETTERS},
         "roads": _ROADS,
         "roads_attribution": "Road shapes © OpenStreetMap contributors (ODbL)",
     }
@@ -158,7 +160,7 @@ def timeline(p: CityPulse = Depends(get_pipeline)):
 
 class EventRequest(BaseModel):
     event: Literal["heavy_rain", "traffic_spike", "incident_cluster", "poor_air", "flooding", "road_accident"]
-    zone_id: str = Field(pattern=r"^[A-I][1-9]$")
+    zone_id: str = Field(pattern=r"^[A-E][1-5]-[1-9]$")
     intensity: float = Field(1.0, ge=0.2, le=1.5)
     duration_s: float = Field(600, ge=60, le=3600)
 
@@ -174,7 +176,7 @@ class PlaybackRequest(BaseModel):
 
 
 class CustomRequest(BaseModel):
-    zone_id: str = Field(pattern=r"^[A-I][1-9]$")
+    zone_id: str = Field(pattern=r"^[A-E][1-5]-[1-9]$")
     values: dict[str, float] = Field(default_factory=dict)
     duration_s: float = Field(600, ge=60, le=3600)
 

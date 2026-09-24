@@ -43,10 +43,10 @@ def test_events_form_a_local_hotspot(pipeline):
     """A storm hits its centre hardest and fades with distance; far areas stay normal."""
     pipeline.run_scenario("heavy_rain", now=T0)
     rain = {z.id: z.metrics["rain_mm_h"].current or 0 for z in pipeline.state.zones}
-    assert rain["F4"] > rain["F5"] > rain["G5"] > 0  # centre > neighbour > diagonal
-    assert rain["A9"] == 0 and rain["I1"] == 0
+    assert rain["C2-9"] > rain["C3-3"] > rain["D3-1"] > 0  # centre > neighbour > diagonal
+    assert rain["A5-7"] == 0 and rain["E1-3"] == 0
     red = [z.id for z in pipeline.state.zones if z.status.value == "RED"]
-    assert "F4" in red and len(red) <= 9
+    assert "C2-9" in red and len(red) <= 12
 
 
 def test_watch_mode_unfolds_live(pipeline):
@@ -65,7 +65,7 @@ def test_poor_air_is_flagged_but_no_cause_is_claimed(pipeline):
 
 
 def test_unknown_scenario_is_rejected_without_resetting(pipeline):
-    pipeline.trigger_event("heavy_rain", "E4", now=T0)
+    pipeline.trigger_event("heavy_rain", "C3-2", now=T0)
     with pytest.raises(SimulationError):
         pipeline.run_scenario("meteor_strike", now=T0)
     assert pipeline.model.effects  # the running event was not wiped
@@ -91,25 +91,25 @@ def test_speed_makes_the_story_unfold_faster(pipeline):
     run(pipeline, 60)
     scenario = pipeline.state.simulation["scenario"]
     assert scenario["elapsed_s"] >= 230
-    assert zone(pipeline, "F4").metrics["rain_mm_h"].is_anomaly
+    assert zone(pipeline, "C2-9").metrics["rain_mm_h"].is_anomaly
     with pytest.raises(SimulationError):
         pipeline.playback("speed", speed=3, now=T0)
 
 
 def test_custom_scenario_drives_real_feeds(pipeline):
-    pipeline.apply_custom("C7", {"rain": 1.0, "flooding": 0.8, "air": 0}, now=T0)
+    pipeline.apply_custom("B4-5", {"rain": 1.0, "flooding": 0.8, "air": 0}, now=T0)
     labels = [e.label for e in pipeline.model.effects]
     assert len(labels) == 2 and all(label.startswith("Custom: ") for label in labels)
     run(pipeline, 120)
-    z = zone(pipeline, "C7")
+    z = zone(pipeline, "B4-5")
     assert z.metrics["rain_mm_h"].is_anomaly and z.metrics["water_level_cm"].is_anomaly
-    pipeline.apply_custom("C7", {"rain": 0}, now=T0 + timedelta(seconds=121))
+    pipeline.apply_custom("B4-5", {"rain": 0}, now=T0 + timedelta(seconds=121))
     assert pipeline.model.effects == []  # sliders at zero clear the custom scenario
 
 
 def test_custom_rejects_unknown_controls_and_areas(pipeline):
     with pytest.raises(SimulationError):
-        pipeline.apply_custom("C7", {"earthquake": 1.0}, now=T0)
+        pipeline.apply_custom("B4-5", {"earthquake": 1.0}, now=T0)
     with pytest.raises(SimulationError):
         pipeline.apply_custom("Z9", {"rain": 1.0}, now=T0)
 
@@ -128,8 +128,8 @@ def test_scenario_api():
         assert client.post("/api/simulation/playback", json={"action": "pause"}).json()["ok"]
         assert client.get("/api/simulation/status").json()["clock"]["paused"] is True
         assert client.post("/api/simulation/scenario", json={"name": "nope"}).status_code == 400
-        bad = client.post("/api/simulation/custom", json={"zone_id": "F4", "values": {"rain": 9}})
+        bad = client.post("/api/simulation/custom", json={"zone_id": "C2-9", "values": {"rain": 9}})
         assert bad.status_code == 422
         assert client.post("/api/simulation/custom", json={"zone_id": "Z1", "values": {"rain": 1}}).status_code == 422
-        assert client.post("/api/simulation/custom", json={"zone_id": "F4", "values": {"traffic": 1}}).json()["ok"]
+        assert client.post("/api/simulation/custom", json={"zone_id": "C2-9", "values": {"traffic": 1}}).json()["ok"]
         assert client.post("/api/simulation/reset").json()["ok"]

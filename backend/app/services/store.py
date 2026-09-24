@@ -4,7 +4,7 @@ The analysis engine reads only from here, so the live pulse keeps working even i
 database has a problem. Data older than ``retention`` is pruned every tick.
 
 Series are kept sorted by time, so a window read is a binary search rather than a scan —
-this matters with 81 areas × several metrics read every few seconds.
+this matters with 225 blocks × several metrics read every few seconds.
 """
 
 import threading

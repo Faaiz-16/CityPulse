@@ -102,13 +102,13 @@ def test_summarizer_uses_validated_ai_text(monkeypatch, pipeline):
 # ----------------------------------------------------------------------- agent
 
 def test_agent_raises_disruption_alert_with_separated_epistemics(pipeline):
-    pipeline.trigger_event("heavy_rain", "F4", now=T0)
+    pipeline.trigger_event("heavy_rain", "C2-9", now=T0)
     for i in range(1, 50):
         pipeline.tick(T0 + timedelta(seconds=3 * i))
     critical = [a for a in pipeline.agent.active() if a.level == "critical"]
     storm = pipeline.model.effects[0]
     assert critical and all(a.zone_id in storm.reach for a in critical)  # only inside the storm
-    alert = next(a for a in critical if a.zone_id == "F4")  # the centre is hit hardest
+    alert = next(a for a in critical if a.zone_id == "C2-9")  # the centre is hit hardest
     assert alert.kind == "potential_disruption"
     assert alert.observed and "may be related" in alert.possible_relationship
     assert alert.causation_note.startswith("Not a confirmed cause")
@@ -116,7 +116,7 @@ def test_agent_raises_disruption_alert_with_separated_epistemics(pipeline):
 
 
 def test_agent_resolves_alert_after_conditions_clear(pipeline):
-    pipeline.trigger_event("heavy_rain", "F4", now=T0)
+    pipeline.trigger_event("heavy_rain", "C2-9", now=T0)
     for i in range(1, 50):
         pipeline.tick(T0 + timedelta(seconds=3 * i))
     assert pipeline.agent.active()
@@ -124,8 +124,8 @@ def test_agent_resolves_alert_after_conditions_clear(pipeline):
     t = T0 + timedelta(seconds=150)
     for i in range(1, 260):  # rolling window must empty out
         pipeline.tick(t + timedelta(seconds=3 * i))
-    assert not [a for a in pipeline.agent.active() if a.zone_id == "F4"]
-    assert any(a.zone_id == "F4" for a in pipeline.agent.recent_resolved())
+    assert not [a for a in pipeline.agent.active() if a.zone_id == "C2-9"]
+    assert any(a.zone_id == "C2-9" for a in pipeline.agent.recent_resolved())
 
 
 def test_quiet_city_raises_no_alerts(pipeline):
@@ -136,7 +136,7 @@ def test_quiet_city_raises_no_alerts(pipeline):
 
 # ------------------------------------------------------------------ simulation
 
-@pytest.mark.parametrize("event,zone", [("meteor", "F4"), ("heavy_rain", "Z9")])
+@pytest.mark.parametrize("event,zone", [("meteor", "C2-9"), ("heavy_rain", "Z9")])
 def test_invalid_simulation_input_rejected(pipeline, event, zone):
     with pytest.raises(SimulationError):
         pipeline.trigger_event(event, zone, now=T0)
@@ -151,7 +151,7 @@ def test_full_scenario_reaches_every_stage(pipeline):
     at = {s["key"]: s["reached_at"] for s in stages}
     assert at["rain"] <= at["traffic"]
     assert at["link"] <= at["disruption"]
-    f4 = next(z for z in pipeline.state.zones if z.id == "F4")
+    f4 = next(z for z in pipeline.state.zones if z.id == "C2-9")
     assert f4.status.value == "RED"
 
 
@@ -159,13 +159,13 @@ def test_unrelated_traffic_spike_is_not_linked_to_rain(pipeline):
     pipeline.run_full_scenario(now=T0)
     for i in range(1, 80):
         pipeline.tick(T0 + timedelta(seconds=3 * i))
-    c4 = next(z for z in pipeline.state.zones if z.id == "C4")
+    c4 = next(z for z in pipeline.state.zones if z.id == "B3-1")
     assert c4.metrics["congestion_pct"].is_anomaly
     assert not any(r.rule_id.startswith("rain") for r in c4.relationships)
 
 
 def test_reset_returns_city_to_normal(pipeline):
-    pipeline.trigger_event("heavy_rain", "F4", now=T0)
+    pipeline.trigger_event("heavy_rain", "C2-9", now=T0)
     for i in range(1, 40):
         pipeline.tick(T0 + timedelta(seconds=3 * i))
     pipeline.reset(now=T0 + timedelta(seconds=200))
@@ -179,17 +179,17 @@ def test_simulation_is_deterministic(settings):
     def run_once():
         p = CityPulse(settings)
         p.startup(T0)
-        p.trigger_event("heavy_rain", "F4", now=T0)
+        p.trigger_event("heavy_rain", "C2-9", now=T0)
         for i in range(1, 40):
             p.tick(T0 + timedelta(seconds=3 * i))
-        f4 = next(z for z in p.state.zones if z.id == "F4")
+        f4 = next(z for z in p.state.zones if z.id == "C2-9")
         return f4.metrics["congestion_pct"].current, sorted(i.id for i in f4.recent_incidents)
 
     assert run_once() == run_once()
 
 
 def test_finished_events_are_forgotten_and_live_apis_resume(pipeline):
-    pipeline.trigger_event("traffic_spike", "C4", duration_s=60, now=T0)
+    pipeline.trigger_event("traffic_spike", "B3-1", duration_s=60, now=T0)
     pipeline.tick(T0 + timedelta(seconds=3))
     assert pipeline.feeds.live_paused
     end = pipeline.model.effects[0].end

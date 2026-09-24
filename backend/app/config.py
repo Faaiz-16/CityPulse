@@ -47,7 +47,7 @@ class Settings(BaseSettings):
     transit_threshold_pct: float = 50.0
     incident_threshold_pct: float = 40.0
     incident_min_count: int = 3  # need at least this many reports before calling a spike
-    # Reports are re-checked for 81 areas × 4 report types every few seconds, so a strict
+    # Reports are re-checked for 225 blocks × 4 report types every few seconds, so a strict
     # significance level is needed to avoid chance false alarms (multiple comparisons).
     incident_p_value: float = 0.001
     heavy_rain_mm_h: float = 7.6  # WMO/AMS "heavy rain" rate

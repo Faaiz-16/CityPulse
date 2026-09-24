@@ -39,9 +39,9 @@ DEFAULT_BASELINES: dict[str, float] = {
     "aqi": 85.0,
     "water_level_cm": 1.5,
 }
-# Per area (a ~2.5 km grid cell), so these are small.
-DEFAULT_INCIDENT_RATE_PER_MIN = {"incident_reports": 0.02, "waterlogging_reports": 0.0005,
-                                 "outage_signal_reports": 0.001, "accident_reports": 0.001}
+# Per block (~1.5 km), so these are small.
+DEFAULT_INCIDENT_RATE_PER_MIN = {"incident_reports": 0.008, "waterlogging_reports": 0.0002,
+                                 "outage_signal_reports": 0.0004, "accident_reports": 0.0004}
 
 
 def slot_of(t: datetime, tz: ZoneInfo) -> int:

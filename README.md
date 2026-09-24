@@ -34,7 +34,7 @@ trustworthy, finding genuine links rather than coincidences, and **explaining th
 | **Ingest** | 5 feeds in 5 different raw formats (JSON, CSV, Open311, MQTT-style messages) |
 | **Normalize** | One common data model: UTC timestamps, standard units, area IDs, per-record validation, personal data stripped |
 | **Analyse** | Time-of-day baselines → anomaly detection → rolling-window correlation → possible-impact insight → area status |
-| **Show** | A map of Jaipur split into a 9 × 9 grid of ~2.5 km areas; unusual areas show **Needs attention / Possible disruption** as colour + icon + word |
+| **Show** | A map of Jaipur in 5 × 5 districts, each split into 3 × 3 blocks (~1.5 km); unusual blocks show **Needs attention / Possible disruption** as colour + icon + word |
 | **Explain** | "What's happening · Why it may matter · Possible connection" — rule-based, optionally AI-assisted and fact-checked |
 | **Watch** | A monitoring agent raises and resolves alerts, keeping *observed facts*, *possible links* and *"not a confirmed cause"* separate |
 | **Survive failures** | Any feed can fail, lag or send garbage; the rest keeps working and the UI says exactly what is missing |
@@ -55,11 +55,14 @@ Full details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Key features
 
-- **Jaipur as a 9 × 9 grid.** 81 areas of ~2.5 km (A1–I9, named after localities — the Walled
-  City is F4), each with its own sensors, baselines and status. Events are local: a storm lights up
-  a small **hotspot** of neighbouring areas, a crash just one.
+- **Jaipur in districts and blocks.** 5 × 5 districts (A–E, 1–5, named after localities — the
+  Walled City is C2), each split into 3 × 3 blocks of ~1.5 km (`C2-9` = block 9 of C2): 225 blocks,
+  each with its own sensors, baselines and status. Events are local: a storm lights up a
+  **hotspot** of neighbouring blocks, a crash just one.
+- **Smooth map.** Canvas rendering, no blur behind panels, and layers that only redraw when they
+  change — 60 fps while zooming.
 - **Map-first, 10-second read.** The default screen is the map, a slim header and a handful of
-  alerts. Normal areas are just faint grid lines; unusual areas get a soft amber or red tint and
+  alerts. Normal blocks are just faint grid lines; unusual blocks get a soft amber or red tint and
   each hotspot gets one short label. Everything else is one click away.
 - **Visual language.** Glowing rain cells, congestion drawn on Jaipur's **real main roads**
   (OpenStreetMap), clustered incident
@@ -73,7 +76,7 @@ Full details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   vs normal, "Why these flags?", a 15-minute chart and the agent's reasoning.
 - **Honest correlation.** Only logically related signals, same area, same rolling window,
   timing that fits. Strength scored and shown. Weak evidence is labelled *insufficient*.
-- **Early warnings.** "Traffic may slow in Walled City (F4)" fires when rain is heavy and traffic is
+- **Early warnings.** "Traffic may slow in Walled City (C2-9)" fires when rain is heavy and traffic is
   climbing — *before* it crosses its threshold.
 - **Demo drawer.** Eight realistic scenario presets (heavy rain, flash flood, congestion,
   accident, power outage, poor air, severe storm, multi-event) that unfold over time with
@@ -128,7 +131,7 @@ Full traceability: [docs/REQUIREMENTS_MATRIX.md](docs/REQUIREMENTS_MATRIX.md).
 **Historical replay — yesterday's recorded storm, same engine, labelled not live**
 ![Replay of the recorded storm](docs/screenshots/replay.jpg)
 
-Deep links for demos: `/?zone=F4` opens an area (grid cell); `/?replay=1&frame=40` opens the replay at a
+Deep links for demos: `/?zone=C2-9` opens a block; `/?replay=1&frame=40` opens the replay at a
 recorded minute.
 
 ## Installation
@@ -210,7 +213,7 @@ Full script with timings: [docs/DEMO.md](docs/DEMO.md).
 |---|---|---|
 | GET | `/api/health` | Pipeline, storage, feed and AI status |
 | GET | `/api/dashboard` | Complete civic state (what the UI polls) |
-| GET | `/api/zones`, `/api/zones/{id}` | The 81 grid areas; area detail with series and explanation |
+| GET | `/api/zones`, `/api/zones/{id}` | The 225 blocks (with their district); block detail with series and explanation |
 | GET | `/api/map` | Grid edges and Jaipur's main roads (OpenStreetMap) per cell |
 | GET | `/api/readings`, `/api/incidents` | Normalized recent data |
 | GET | `/api/anomalies`, `/api/correlations`, `/api/risks` | Analysis output |
@@ -235,7 +238,7 @@ backend/
     agent/          monitoring agent
     simulation/     scenario presets, scenario clock, custom scenarios, history, replay
     services/       pipeline, feed manager, rolling store, persistence
-    geo/            Jaipur 9 × 9 grid, locality names, main roads (OSM)
+    geo/            Jaipur districts (5 × 5) and blocks (3 × 3 each), names, main roads (OSM)
   tests/            121 tests (normalization, analysis, resilience, AI, agent, scenarios, replay, API)
 frontend/
   src/
@@ -264,7 +267,7 @@ File-by-file explanation: [docs/FILE_GUIDE.md](docs/FILE_GUIDE.md).
 
 ## Limitations
 
-- Areas are a 9 × 9 demonstration grid over Jaipur, not official wards; the city's data is simulated
+- Districts and blocks are a demonstration grid over Jaipur, not official wards; the city's data is simulated
   (labelled SIMULATED) unless live weather/air-quality APIs are switched on.
 - Data is synthetic unless a feed reports LIVE; the model is realistic but not calibrated on a
   real city.

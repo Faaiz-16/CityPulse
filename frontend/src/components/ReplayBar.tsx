@@ -15,7 +15,7 @@ export function ReplayBar({ replay, zones }: { replay: ReplayControls; zones: Zo
   if (!meta) return null;
   const frames = meta.frames;
   const current = frames[index];
-  // Only the areas the storm touched get a row (most affected first); 81 rows would be noise.
+  // Only the blocks the storm touched get a row (most affected first); 225 rows would be noise.
   const affected = zones
     .map((z) => ({ z, n: frames.filter((f) => f.statuses[z.id] !== "GREEN").length }))
     .filter((r) => r.n > 0)
@@ -117,7 +117,7 @@ export function ReplayBar({ replay, zones }: { replay: ReplayControls; zones: Zo
         />
         <div className="mt-1 flex justify-between font-mono text-[10px] text-[var(--faint)]">
           <span>{clockTime(frames[0]?.t, false)}</span>
-          <span>rows: {affected.length ? affected.map((z) => z.short_name).join(", ") : "no area affected"} · 1 column = 1 minute</span>
+          <span>rows: {affected.length ? affected.map((z) => z.short_name).join(", ") : "no block affected"} · 1 column = 1 minute</span>
           <span>{clockTime(frames[frames.length - 1]?.t, false)}</span>
         </div>
       </div>

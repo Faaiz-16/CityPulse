@@ -107,10 +107,10 @@ PRESETS: tuple[Preset, ...] = (
     Preset(
         id="heavy_rain", name="Heavy rainfall", icon="rain",
         tagline="Monsoon downpour over the Walled City",
-        zone="F4", severity="high", duration_s=600,
+        zone="C2-9", severity="high", duration_s=600,
         feeds=("weather", "traffic", "transit", "civic reports", "water sensors"),
         expected="Possible traffic disruption in and around the Walled City",
-        steps=(Step(0, "heavy_rain", narration="Rain begins over the Walled City (F4)."),),
+        steps=(Step(0, "heavy_rain", narration="Rain begins over the Walled City (C2-9)."),),
         beats=(
             Beat("rain", "Rain begins", 25, value_at_least("rain_mm_h", 2.5)),
             Beat("rain_heavy", "Rain becomes heavy", 35, anomalous("rain_mm_h")),
@@ -125,10 +125,10 @@ PRESETS: tuple[Preset, ...] = (
     Preset(
         id="flash_flood", name="Flash flood", icon="water",
         tagline="Cloudburst — the Dravyavati overflows in Mansarovar",
-        zone="C7", severity="high", duration_s=600,
+        zone="B4-5", severity="high", duration_s=600,
         feeds=("weather", "water sensors", "civic reports", "traffic"),
         expected="Possible waterlogging disruption in Mansarovar",
-        steps=(Step(0, "heavy_rain", 1.3, narration="A cloudburst starts over Mansarovar (C7)."),
+        steps=(Step(0, "heavy_rain", 1.3, narration="A cloudburst starts over Mansarovar (B4-5)."),
                Step(20, "flooding", 1.0, narration="Drains in Mansarovar begin to overflow.")),
         beats=(
             Beat("rain", "Intense rain begins", 35, anomalous("rain_mm_h")),
@@ -142,10 +142,10 @@ PRESETS: tuple[Preset, ...] = (
     Preset(
         id="traffic", name="Major congestion", icon="traffic",
         tagline="Gridlock around C-Scheme and MI Road — no weather involved",
-        zone="E4", severity="moderate", duration_s=600,
+        zone="C3-2", severity="moderate", duration_s=600,
         feeds=("traffic", "transit", "air quality"),
         expected="Traffic and air quality worsening in C-Scheme — no weather link",
-        steps=(Step(0, "traffic_spike", narration="Traffic builds rapidly around C-Scheme (E4)."),),
+        steps=(Step(0, "traffic_spike", narration="Traffic builds rapidly around C-Scheme (C3-2)."),),
         beats=(
             Beat("traffic", "Traffic starts building", 30, deviation_at_least("congestion_pct", 10)),
             Beat("traffic_high", "Congestion becomes unusual", 50, anomalous("congestion_pct")),
@@ -157,10 +157,10 @@ PRESETS: tuple[Preset, ...] = (
     Preset(
         id="accident", name="Road accident", icon="accident",
         tagline="A serious crash on Ajmer Road near Heerapura",
-        zone="B6", severity="high", duration_s=480,
+        zone="A3-9", severity="high", duration_s=480,
         feeds=("civic reports", "traffic", "transit"),
         expected="Possible traffic disruption after an accident near Heerapura",
-        steps=(Step(0, "road_accident", narration="Accident reports start coming in from Ajmer Road (B6)."),),
+        steps=(Step(0, "road_accident", narration="Accident reports start coming in from Ajmer Road (A3-9)."),),
         beats=(
             Beat("reports", "Accident reports come in", 65, value_at_least("accident_reports", 2)),
             Beat("reports_high", "Report cluster confirmed", 85, anomalous("accident_reports")),
@@ -172,10 +172,10 @@ PRESETS: tuple[Preset, ...] = (
     Preset(
         id="power_outage", name="Power outage", icon="outage",
         tagline="Substation failure knocks out power and signals in Malviya Nagar",
-        zone="F7", severity="high", duration_s=600,
+        zone="C4-6", severity="high", duration_s=600,
         feeds=("civic reports", "traffic", "transit"),
         expected="Possible disruption from outages in Malviya Nagar",
-        steps=(Step(0, "incident_cluster", narration="Power-outage reports start in Malviya Nagar (F7)."),),
+        steps=(Step(0, "incident_cluster", narration="Power-outage reports start in Malviya Nagar (C4-6)."),),
         beats=(
             Beat("reports", "Outage reports come in", 80, value_at_least("outage_signal_reports", 2)),
             Beat("reports_high", "Outage cluster confirmed", 80, anomalous("outage_signal_reports")),
@@ -187,10 +187,10 @@ PRESETS: tuple[Preset, ...] = (
     Preset(
         id="poor_air", name="Poor air quality", icon="air",
         tagline="Smog settles over the VKI industrial area — cause unknown",
-        zone="D1", severity="moderate", duration_s=600,
+        zone="B1-3", severity="moderate", duration_s=600,
         feeds=("air quality",),
         expected="Air-quality alert in VKI Industrial Area — CityPulse does not guess a cause",
-        steps=(Step(0, "poor_air", narration="Air quality starts deteriorating around VKI Industrial Area (D1)."),),
+        steps=(Step(0, "poor_air", narration="Air quality starts deteriorating around VKI Industrial Area (B1-3)."),),
         beats=(
             Beat("air", "Air quality worsens", 20, deviation_at_least("aqi", 15)),
             Beat("air_high", "Air quality becomes unusual", 20, anomalous("aqi")),
@@ -200,10 +200,10 @@ PRESETS: tuple[Preset, ...] = (
     Preset(
         id="storm", name="Severe storm", icon="storm",
         tagline="Torrential rain, flooding and power cuts in Jagatpura",
-        zone="G8", severity="high", duration_s=720,
+        zone="D5-3", severity="high", duration_s=720,
         feeds=("weather", "water sensors", "civic reports", "traffic", "transit"),
         expected="Possible disruption in Jagatpura from several linked signals",
-        steps=(Step(0, "heavy_rain", 1.5, narration="A severe storm reaches Jagatpura (G8)."),
+        steps=(Step(0, "heavy_rain", 1.5, narration="A severe storm reaches Jagatpura (D5-3)."),
                Step(30, "flooding", 0.8, narration="Low-lying streets in Jagatpura start flooding."),
                Step(45, "incident_cluster", 0.7, narration="Storm damage causes power cuts in Jagatpura.")),
         beats=(
@@ -218,13 +218,13 @@ PRESETS: tuple[Preset, ...] = (
     Preset(
         id="multi_event", name="Multi-event evening", icon="multi",
         tagline="Rain over the Walled City, plus an unrelated jam in Vaishali Nagar",
-        zone="F4", severity="high", duration_s=600, lag_scale=1.0,
+        zone="C2-9", severity="high", duration_s=600, lag_scale=1.0,
         feeds=("all feeds",),
         expected="Disruption in the Walled City; Vaishali Nagar traffic flagged but NOT blamed on the rain",
-        extra_zones=("C4",),
-        steps=(Step(6, "heavy_rain", narration="Heavy rain begins over the Walled City (F4)."),
-               Step(30, "traffic_spike", 0.55, zone="C4",
-                    narration="An unrelated traffic build-up starts in Vaishali Nagar (C4).")),
+        extra_zones=("B3-1",),
+        steps=(Step(6, "heavy_rain", narration="Heavy rain begins over the Walled City (C2-9)."),
+               Step(30, "traffic_spike", 0.55, zone="B3-1",
+                    narration="An unrelated traffic build-up starts in Vaishali Nagar (B3-1).")),
         beats=(
             Beat("rain", "Rain begins", 25, value_at_least("rain_mm_h", 2.5)),
             Beat("traffic", "Traffic increases", 55, deviation_at_least("congestion_pct", 10)),

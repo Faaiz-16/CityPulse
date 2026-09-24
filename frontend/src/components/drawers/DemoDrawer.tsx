@@ -23,10 +23,11 @@ interface Props {
   onChanged: () => void;
   onStartReplay: () => void;
   onShow: (zoneId: string | null) => void; // a situation is ready: show it on the map
+  districtNames: Record<string, string>; // "C2" → "Walled City"
 }
 
 /** Everything needed to *create* a situation: scenarios, custom sliders, feed failures. */
-export function DemoDrawer({ sim, zones, feeds, onClose, onChanged, onStartReplay, onShow }: Props) {
+export function DemoDrawer({ sim, zones, feeds, onClose, onChanged, onStartReplay, onShow, districtNames }: Props) {
   const [tab, setTab] = useState<Tab>("scenarios");
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<{ text: string; error?: boolean } | null>(null);
@@ -66,7 +67,7 @@ export function DemoDrawer({ sim, zones, feeds, onClose, onChanged, onStartRepla
 
       <div className="space-y-4 p-4">
         {tab === "scenarios" && <ScenariosTab sim={sim} zones={zones} busy={busy} act={act} onStartReplay={onStartReplay} onShow={onShow} />}
-        {tab === "custom" && <CustomTab sim={sim} zones={zones} busy={!!busy} act={act} onShow={onShow} />}
+        {tab === "custom" && <CustomTab sim={sim} zones={zones} districtNames={districtNames} busy={!!busy} act={act} onShow={onShow} />}
         {tab === "feeds" && <FeedsTab feeds={feeds} busy={!!busy} act={act} />}
         {busy && (
           <p className="flex items-center gap-2 text-[12.5px] text-[var(--pulse)]" role="status">
@@ -237,10 +238,10 @@ function levelWord(v: number) {
   return "Extreme";
 }
 
-function CustomTab({ sim, zones, busy, act, onShow }: {
-  sim: SimulationStatus; zones: ZoneState[]; busy: boolean; act: Act; onShow: (id: string | null) => void;
+function CustomTab({ sim, zones, districtNames, busy, act, onShow }: {
+  sim: SimulationStatus; zones: ZoneState[]; districtNames: Record<string, string>; busy: boolean; act: Act; onShow: (id: string | null) => void;
 }) {
-  const [zone, setZone] = useState(sim.custom?.zone_id ?? "F4");
+  const [zone, setZone] = useState(sim.custom?.zone_id ?? "C2-9");
   const [duration, setDuration] = useState(sim.custom?.duration_s ?? 600);
   const [values, setValues] = useState<Record<string, number>>(
     () => Object.fromEntries(sim.custom_controls.map((c) => [c, sim.custom?.values[c] ?? 0])),
@@ -249,18 +250,23 @@ function CustomTab({ sim, zones, busy, act, onShow }: {
     if (sim.custom) setValues((v) => ({ ...v, ...sim.custom!.values }));
   }, [sim.custom]);
   const any = Object.values(values).some((v) => v > 0);
-  const areas = [...zones].sort((a, b) => a.short_name.localeCompare(b.short_name));
+  // Blocks grouped by district (A1 … E5), keypad order inside each.
+  const districts = [...new Set(zones.map((z) => z.id.slice(0, 2)))].sort((a, b) => a[1].localeCompare(b[1]) || a[0].localeCompare(b[0]));
   return (
     <>
       <p className="text-[12px] text-[var(--muted)]">
-        Set conditions around one area. The simulated feeds change and build up over a minute or two; CityPulse has to
+        Set conditions around one block. The simulated feeds change and build up over a minute or two; CityPulse has to
         notice and connect them itself.
       </p>
       <label className="flex items-center justify-between gap-2 text-[12.5px]">
-        <span className="font-semibold">Area</span>
+        <span className="font-semibold">Block</span>
         <select value={zone} onChange={(e) => setZone(e.target.value)} className="max-w-[230px] rounded-lg px-2 py-1.5 text-[12.5px]"
           style={{ background: "var(--panel-2)", border: "1px solid var(--line)" }}>
-          {areas.map((z) => <option key={z.id} value={z.id}>{z.short_name} ({z.id})</option>)}
+          {districts.map((d) => (
+            <optgroup key={d} label={`District ${d}${districtNames[d] ? ` · ${districtNames[d]}` : ""}`}>
+              {zones.filter((z) => z.id.startsWith(`${d}-`)).map((z) => <option key={z.id} value={z.id}>{z.id} · {z.short_name}</option>)}
+            </optgroup>
+          ))}
         </select>
       </label>
       <div className="space-y-3">

@@ -3,8 +3,8 @@
 A reliable, rehearsable walkthrough for judges. Everything runs locally; the only internet
 dependency is the map background (the demo still works without it).
 
-The interface is **map-first**: Jaipur fills the screen, split into a 9 × 9 grid of ~2.5 km areas
-(columns A–I, rows 1–9; the Walled City is **F4**). Around it: a slim header, a compact legend and
+The interface is **map-first**: Jaipur fills the screen in **5 × 5 districts** (columns A–E, rows
+1–5; the Walled City is **C2**), each split into **3 × 3 blocks** of ~1.5 km (block `C2-9`). Around it: a slim header, a compact legend and
 at most four alerts. Everything else opens on demand — **Demo** and **Insights** drawers on the
 left, the **area panel** on the right, **Replay** at the bottom.
 
@@ -17,10 +17,10 @@ refreshing between situations.
 ## Before you present (5 minutes earlier)
 
 1. Start the backend and frontend (see [SETUP.md](SETUP.md)), or one-server mode. The very first
-   start builds history for the 81 areas (~20 s); later starts are quick.
+   start builds history for the 225 blocks (~25 s); later starts are quick.
 2. Open <http://localhost:5173> full-screen (1440 × 900 or larger looks best on a projector).
 3. Header → **Demo** → **Normal city**.
-4. Check: header says **City normal · All 81 areas normal**, mode **LIVE**, alerts say **All clear**.
+4. Check: header says **City normal · All 25 districts normal**, mode **LIVE**, alerts say **All clear**.
 
 Pre-flight checklist:
 
@@ -33,7 +33,7 @@ Pre-flight checklist:
 | Time | What you do | What judges see |
 |---|---|---|
 | 0:00 | Open on the map | Jaipur with a faint grid, green heart, "All clear" |
-| 0:20 | **Demo → Heavy rainfall** | ~2 s later: the map flies to the Walled City; a red hotspot of 5 areas, rain cells, congestion on real roads, waterlogging icons; the simple area panel opens |
+| 0:20 | **Demo → Heavy rainfall** | ~2 s later: the map flies to the Walled City; a red hotspot of 9 blocks, rain cells, congestion on real roads, waterlogging icons; the simple area panel opens |
 | 0:40 | Read the panel aloud | "Possible disruption · Heavy rain · Traffic much heavier than usual · Buses running late · Allow extra travel time" |
 | 1:10 | **Explain in detail** | What's happening, measured evidence, possible relationship (*not a confirmed cause*) |
 | 1:50 | **Demo → Multi-event evening** | Rain over the Walled City **and** a separate amber jam in Vaishali Nagar that is not blamed on the rain |
@@ -45,7 +45,7 @@ Pre-flight checklist:
 
 ### 1. The 10-second read (0:00–0:20)
 **Show:** the opening screen.
-**Say:** "This is CityPulse for Jaipur. The city is a grid of 81 areas, each watched on its own. A
+**Say:** "This is CityPulse for Jaipur. The city is 25 districts, each split into 9 blocks — 225 small areas, each watched on its own. A
 resident opens it and in ten seconds knows: is the city OK, where is the problem, what kind, how
 serious. Right now the heart is green and every area is normal — so we draw nothing but the grid."
 
@@ -97,12 +97,12 @@ why. For a real city you swap the simulated feeds for real ones; everything else
 
 | Situation | Where | What it demonstrates |
 |---|---|---|
-| Flash flood | Mansarovar (C7) | Rain + street flooding + waterlogging surge |
-| Major congestion | C-Scheme (E4) | Traffic → bus delays → air quality, **no weather link claimed** |
-| Road accident | Ajmer Road, Heerapura (B6) | A single red area: accident reports → queue → possible disruption |
-| Power outage | Malviya Nagar (F7) | Outage + signal reports → traffic at dark junctions |
-| Poor air quality | VKI Industrial Area (D1) | Flagged, but *"no related signal — no cause claimed"* |
-| Severe storm | Jagatpura (G8) | Rain + flooding + power cuts, several linked signals |
+| Flash flood | Mansarovar (B4-5) | Rain + street flooding + waterlogging surge |
+| Major congestion | C-Scheme (C3-2) | Traffic → bus delays → air quality, **no weather link claimed** |
+| Road accident | Ajmer Road, Heerapura (A3-9) | A single red block: accident reports → queue → possible disruption |
+| Power outage | Malviya Nagar (C4-6) | Outage + signal reports → traffic at dark junctions |
+| Poor air quality | VKI Industrial Area (B1-3) | Flagged, but *"no related signal — no cause claimed"* |
+| Severe storm | Jagatpura (D5-3) | Rain + flooding + power cuts, several linked signals |
 
 Tick **Play step by step** in the Demo drawer to watch a situation build up live instead (~2 minutes,
 with pause and 2×/4×). The **Custom** tab sets rain, flooding, traffic, accident, outage and air
