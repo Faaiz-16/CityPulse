@@ -120,7 +120,7 @@ recorded minute.
 
 ## Installation
 
-Prerequisites: Python 3.11+, Node.js 20+.
+Prerequisites: Python 3.11+, Node.js 20.19+ or 22.12+.
 
 ### Backend
 
@@ -141,6 +141,11 @@ npm run dev
 ```
 
 Open <http://localhost:5173>. Full guide and troubleshooting: [docs/SETUP.md](docs/SETUP.md).
+
+### One-server mode
+
+After `npm run build` in `frontend/`, the backend also serves the UI: run only
+`uvicorn app.main:app --port 8000` and open <http://localhost:8000>.
 
 ### Database
 
@@ -213,7 +218,7 @@ backend/
     simulation/     demo events, scenario, synthetic history, historical replay
     services/       pipeline, feed manager, rolling store, persistence
     geo/            demo zones and geometry
-  tests/            99 tests (normalization, analysis, resilience, AI, agent, replay, API)
+  tests/            104 tests (normalization, analysis, resilience, AI, agent, replay, API)
 frontend/
   src/
     components/     TopBar, PulseStrip, map/, zone/, panels
@@ -237,6 +242,7 @@ File-by-file explanation: [docs/FILE_GUIDE.md](docs/FILE_GUIDE.md).
 | [DEMO.md](docs/DEMO.md) | Timed 3–5 minute demo script and recovery plan |
 | [PRESENTATION.md](docs/PRESENTATION.md) · [PITCH_SCRIPT.md](docs/PITCH_SCRIPT.md) | Slides and what to say |
 | [JUDGE_QA.md](docs/JUDGE_QA.md) | 36 likely judge questions with answers |
+| [FINAL_CHECKLIST.md](docs/FINAL_CHECKLIST.md) | The brief's validation checklist, with evidence for every item |
 
 ## Limitations
 

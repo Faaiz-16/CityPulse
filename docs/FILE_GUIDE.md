@@ -12,7 +12,7 @@ grouped in the order data flows through the system.
 | `README.md` | Project overview, setup, demo, API summary |
 | `.env.example` | Every configurable setting with safe defaults (copy to `backend/.env`) |
 | `.gitignore` | Keeps secrets, virtual environments, `node_modules`, builds and local databases out of git |
-| `docs/` | Setup, team guide, architecture, API, database, file guide, requirement matrix, demo, presentation, pitch script, judge Q&A, `screenshots/` |
+| `docs/` | Setup, team guide, architecture, API, database, file guide, requirement matrix, demo, presentation, pitch script, judge Q&A, final checklist, `screenshots/` |
 
 ---
 
@@ -25,7 +25,7 @@ Python dependencies: FastAPI, Uvicorn, SQLAlchemy, Pydantic (+ settings), httpx,
 **Purpose:** creates the FastAPI app.
 **Why:** one entry point for `uvicorn app.main:app`.
 **Important contents:** `lifespan` (builds the pipeline, runs start-up, launches the background
-tick loop), CORS, three error handlers (simulation errors → 400, validation → 422 with field
+tick loop), CORS, one-server mode (serves `frontend/dist` if it has been built), three error handlers (simulation errors → 400, validation → 422 with field
 messages, everything else → generic 500 with no stack trace).
 **Depends on:** `services/pipeline.py`, `api/routes.py`, `config.py`.
 
@@ -117,7 +117,7 @@ critical alert, reasoning `trace`, best-effort persistence callback.
 | File | Purpose | Important contents |
 |---|---|---|
 | `pipeline.py` | The orchestrator (`CityPulse`) | `startup()`, `warm_up()`, `tick()` (whole pipeline, never raises after start-up), simulation actions, `zone_detail()`, ticker and heat-map timeline |
-| `feed_manager.py` | Polling, fallback chain, feed health | `FEEDS` registry, fault modes, live→synthetic fallback with back-off, status rules LIVE…UNAVAILABLE, friendly error messages |
+| `feed_manager.py` | Polling, fallback chain, feed health | `FEEDS` registry (incl. each live source's publishing cadence), fault modes, live→synthetic fallback with back-off, status rules LIVE…UNAVAILABLE, friendly error messages |
 | `ticker.py` | Live civic signal stream | `Ticker.update()` turns changes between ticks (new reports, anomalies, links, status, alerts, feed health) into narrative events; shared by live and replay |
 | `views.py` | Zone-detail view | `zone_detail()` builds chart series, baselines and report counts; shared by live and replay |
 | `store.py` | In-memory rolling store | Time-ordered series per zone × metric, de-duplicated incidents, latest value per sensor, pruning |
@@ -139,6 +139,7 @@ validate input with Pydantic (`EventRequest`, `FaultRequest`); 404/400 with help
 | `test_ai_agent_simulation.py` | Validator, AI fallback, validated AI text, agent alerts + hysteresis, invalid simulation input, full scenario stages, unrelated spike not linked, reset, determinism |
 | `test_replay.py` | Replay finds the event, calm → disruption → recovery, key-moment order, same engine/agent, ARCHIVE labelling, baselines not distorted, replay API |
 | `test_api.py` | Every endpoint, safe error responses, simulation endpoints |
+| `test_config.py` | Every variable in `.env.example` is a real setting; no secret values committed |
 
 ---
 

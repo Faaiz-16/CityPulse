@@ -126,7 +126,7 @@ Visual: one messy raw record on the left, the clean normalized record on the rig
 
 - 5 feeds · 8 normalizers · anomaly + correlation + risk engine · monitoring agent · replay
 - Map-first React UI with investigation panel, demo controls and replay
-- 99 automated tests · full documentation
+- 104 automated tests · full documentation
 - Stack: Python, FastAPI, SQLAlchemy/SQLite, React, TypeScript, Tailwind, Leaflet, Recharts
 
 **Next:** real feeds, subscriptions for residents, relationship discovery reviewed by humans,

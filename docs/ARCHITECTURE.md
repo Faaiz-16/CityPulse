@@ -222,6 +222,8 @@ Feed whose upstream is the synthetic city (traffic, reports, sensors):
 
 Rules that keep the system honest:
 - Nothing is ever labelled LIVE unless it came from a real API.
+- Live values stay "current" for the upstream's own publishing cadence (Open-Meteo weather
+  15 min, air quality 60 min), not our polling rate; the in-memory store keeps 3 hours for this.
 - Stale/cached data is displayed with its age but **ages out of the analysis window** — it is
   not treated as current.
 - Missing data makes a metric `available: false` ("not assessed"), never zero.
@@ -356,8 +358,8 @@ data), and recorded per snapshot, so no separate tables are needed. Schema is cr
   calibrated on them.
 - Relationship rules are hand-written from domain knowledge; they can miss unexpected links.
 - Correlation ≠ causation: CityPulse can show that signals overlap, never why.
-- In live mode the AQI baseline is still learned from synthetic history, so only the absolute
-  AQI rule is applied to live values.
+- In live mode the AQI baseline is still learned from synthetic history, so live AQI is judged
+  only against the absolute health threshold and shown without a "normal" or % change.
 - The LLM path is covered by unit tests with a mocked client; it depends on a valid API key.
 - Replay covers one recorded event (the storm in the synthetic archive); it isn't a general
   "pick any time range" explorer.

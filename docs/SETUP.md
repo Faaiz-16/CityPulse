@@ -7,8 +7,8 @@ Everything runs locally. No accounts, API keys or internet access are required f
 
 | Tool | Version | Check |
 |---|---|---|
-| Python | 3.11 or newer (tested on 3.14) | `python3 --version` |
-| Node.js | 20 or newer (tested on 26) | `node --version` |
+| Python | 3.11 or newer (tested on 3.12 and 3.14) | `python3 --version` |
+| Node.js | 20.19+ or 22.12+ (tested on 26) | `node --version` |
 | npm | comes with Node | `npm --version` |
 
 ## 1. Backend (FastAPI)
@@ -69,7 +69,7 @@ source .venv/bin/activate
 python -m pytest -q
 ```
 
-Expected: `99 passed`. Tests use a temporary database and a simulated clock, so they are fast
+Expected: `104 passed`. Tests use a temporary database and a simulated clock, so they are fast
 and deterministic.
 
 Frontend type-check and production build:
@@ -79,7 +79,29 @@ cd frontend
 npm run build
 ```
 
-## 5. Using PostgreSQL instead of SQLite (optional)
+## 5. One-server mode (for judging or deployment)
+
+Build the frontend once, and the backend serves it too — one command, one port:
+
+```bash
+cd frontend && npm run build
+cd ../backend && .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+Open <http://localhost:8000>. API routes still live under `/api`. (Set `CITYPULSE_FRONTEND_DIST`
+to serve a build from another folder.)
+
+## 6. Live public data (optional)
+
+`CITYPULSE_LIVE_APIS=true` pulls real weather and air quality for the demo zones from Open-Meteo
+(free, no key). Weather updates every 15 minutes and air quality hourly upstream, and CityPulse
+keeps each value "current" for that long. Live AQI is judged only against the health threshold
+(AQI ≥ 150), because the learned baselines come from synthetic history. Real Delhi air quality is
+often unhealthy, so expect amber zones with the note "insufficient evidence to suggest any
+explanation" — that's the system being honest. Leave live mode **off** for the scripted demo;
+starting a demo event pauses live data automatically and labels feeds SIMULATED.
+
+## 7. Using PostgreSQL instead of SQLite (optional)
 
 ```bash
 pip install psycopg[binary]

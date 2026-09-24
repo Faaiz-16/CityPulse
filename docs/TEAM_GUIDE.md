@@ -277,7 +277,7 @@ npm install
 npm run dev
 ```
 
-Open <http://localhost:5173>. Tests: `cd backend && python -m pytest -q` (99 should pass).
+Open <http://localhost:5173>. Tests: `cd backend && python -m pytest -q` (104 should pass).
 Full guide: [SETUP.md](SETUP.md).
 
 ## 24. How to modify common things

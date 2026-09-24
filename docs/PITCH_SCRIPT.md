@@ -108,7 +108,7 @@ synthetic feeds for real ones — the normalizers, engine, agent and map stay ex
 ## Slide 13 — What we built ✂ · 20 s
 **Show:** the list.
 **Say:** "In 24 hours: five feeds, eight normalizers, the analysis engine, the agent, replay, the
-map-first interface, 99 automated tests and full documentation."
+map-first interface, 104 automated tests and full documentation."
 **Key point:** substance and reliability.
 
 ## Slide 14 — Close · 15 s
