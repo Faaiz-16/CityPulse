@@ -44,7 +44,7 @@ from app.services.store import ReadingStore
 
 # Metrics that take part in relationship rules and need binned series for co-movement.
 _BINNED = ("rain_mm_h", "congestion_pct", "transit_delay_min", "aqi", "water_level_cm",
-           "waterlogging_reports", "outage_signal_reports")
+           "waterlogging_reports", "outage_signal_reports", "accident_reports")
 
 _SHORT_PHRASE = {
     "rain_mm_h": "Heavy rain",
@@ -55,6 +55,7 @@ _SHORT_PHRASE = {
     "incident_reports": "More civic reports than usual",
     "waterlogging_reports": "Waterlogging reports rising",
     "outage_signal_reports": "Outage reports rising",
+    "accident_reports": "Road accident reported",
 }
 
 _SEV_RANK = {"none": 0, "low": 1, "moderate": 2, "high": 3}

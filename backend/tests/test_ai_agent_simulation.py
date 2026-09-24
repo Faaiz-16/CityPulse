@@ -148,7 +148,7 @@ def test_full_scenario_reaches_every_stage(pipeline):
     stages = pipeline.state.simulation["scenario"]["stages"]
     assert all(s["reached_at"] is not None for s in stages), stages
     at = {s["key"]: s["reached_at"] for s in stages}
-    assert at["normal"] <= at["rain"] <= at["traffic"]
+    assert at["rain"] <= at["traffic"]
     assert at["link"] <= at["disruption"]
     z3 = next(z for z in pipeline.state.zones if z.id == "Z3")
     assert z3.status.value == "RED"

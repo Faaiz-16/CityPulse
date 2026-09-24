@@ -40,7 +40,8 @@ METRICS: dict[str, MetricDef] = {
         # Derived from incident reports inside the rolling window:
         MetricDef("incident_reports", "Civic reports (all)", "reports", SourceType.INCIDENTS, "relative", "incident"),
         MetricDef("waterlogging_reports", "Waterlogging reports", "reports", SourceType.INCIDENTS, "relative", "water"),
-        MetricDef("outage_signal_reports", "Power / signal outage reports", "reports", SourceType.INCIDENTS, "relative", "incident"),
+        MetricDef("outage_signal_reports", "Power / signal outage reports", "reports", SourceType.INCIDENTS, "relative", "outage"),
+        MetricDef("accident_reports", "Road accident reports", "reports", SourceType.INCIDENTS, "relative", "accident"),
     )
 }
 
@@ -77,4 +78,5 @@ DERIVED_INCIDENT_METRICS: dict[str, tuple[str, ...] | None] = {
     "incident_reports": None,  # None = every category
     "waterlogging_reports": ("waterlogging",),
     "outage_signal_reports": ("power_outage", "traffic_signal"),
+    "accident_reports": ("road_accident",),
 }

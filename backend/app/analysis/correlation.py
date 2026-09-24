@@ -48,6 +48,11 @@ RULES: tuple[Rule, ...] = (
     Rule("outage_traffic", "Power/signal outages and traffic", "outage_signal_reports",
          ("congestion_pct",), ("transit_delay_min",),
          "a cluster of power-outage and traffic-signal reports", "higher-than-usual traffic congestion"),
+    Rule("accident_traffic", "Road accident and traffic congestion", "accident_reports",
+         ("congestion_pct",), ("transit_delay_min",),
+         "a cluster of road-accident reports", "higher-than-usual traffic congestion"),
+    Rule("traffic_transit", "Traffic congestion and bus delays", "congestion_pct", ("transit_delay_min",), (),
+         "unusually heavy traffic", "longer bus delays"),
     Rule("traffic_air", "Traffic and air quality", "congestion_pct", ("aqi",), (),
          "unusually heavy traffic", "worsening air quality"),
 )
@@ -56,6 +61,7 @@ RULES: tuple[Rule, ...] = (
 FEED_LABEL = {"weather": "Weather", "traffic": "Traffic", "incidents": "Incident-report",
               "air_quality": "Air-quality", "iot_sensors": "Water-level sensor"}
 
+_SPECIFIC_REPORTS = ("waterlogging_reports", "outage_signal_reports", "accident_reports")
 _SEV_WEIGHT = {"none": 0.0, "low": 0.33, "moderate": 0.66, "high": 1.0}
 
 
@@ -191,6 +197,10 @@ def evaluate_zone(z: ZoneSignals, s: Settings) -> tuple[list[Relationship], list
         if strength != "weak":
             explained.update([rule.driver, *(r.metric for r in anomalous), *(r.metric for r in supporting)])
 
+    # Bus delays are already covered as a *supporting* signal by the rain/outage/accident rules;
+    # only keep the plain traffic→bus link when nothing else explains the delays.
+    covered = {m for r in relationships if r.rule_id != "traffic_transit" for m in r.signals}
+    relationships = [r for r in relationships if not (r.rule_id == "traffic_transit" and "transit_delay_min" in covered)]
     insufficient = _unexplained_notes(z, explained)
     return relationships, insufficient, cannot_assess
 
@@ -203,8 +213,9 @@ def _unexplained_notes(z: ZoneSignals, explained: set[str]) -> list[str]:
         if m.metric == "rain_mm_h":
             notes.append(f"Heavy rain in {z.zone_name}, but no related traffic or flooding signal is "
                          f"unusual so far — no disruption link detected.")
-        elif m.metric == "incident_reports" and "waterlogging_reports" in explained:
-            continue  # already covered by the waterlogging relationship
+        elif m.metric == "incident_reports" and any(
+                k in explained or (k in z.metrics and z.metrics[k].is_anomaly) for k in _SPECIFIC_REPORTS):
+            continue  # the overall count is just the specific report type showing up again
         else:
             notes.append(f"{m.label} {verb_for(m.label)} unusual in {z.zone_name}, but no related signal is unusual at the "
                          f"same time — insufficient evidence to suggest any explanation.")

@@ -27,7 +27,7 @@ def anomaly_phrase(metric: str, current: float | None, deviation: float | None, 
         return f"air quality is unhealthy (AQI {_fmt_num(current)})"
     if metric == "water_level_cm":
         return f"street water-level sensors read {_fmt_num(current)} cm"
-    if metric in ("waterlogging_reports", "outage_signal_reports", "incident_reports"):
+    if metric in ("waterlogging_reports", "outage_signal_reports", "incident_reports", "accident_reports"):
         return f"{label} are up ({_fmt_num(current)} in the last window, {usual_reports(baseline, deviation)})"
     verb = verb_for(label)
     if deviation is not None:
@@ -111,10 +111,11 @@ def city_summary(zones: list[ZoneState], degraded_feeds: list[str]) -> tuple[str
 _SIGNAL_NAMES = {
     "rain_mm_h": "heavy rain",
     "congestion_pct": "heavier traffic",
-    "transit_delay_min": "bus delays",
+    "transit_delay_min": "longer bus delays",
     "waterlogging_reports": "waterlogging reports",
     "water_level_cm": "standing water",
     "outage_signal_reports": "power and signal outage reports",
+    "accident_reports": "road-accident reports",
     "aqi": "worse air quality",
 }
 

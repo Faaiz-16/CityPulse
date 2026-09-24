@@ -75,23 +75,76 @@ EFFECT_IMPACTS: dict[str, tuple[Impact, ...]] = {
         Impact("pm25_ugm3", "mul", 0.60, lag_s=40),
     ),
     "incident_cluster": (
-        Impact("congestion_pct", "mul", 0.45, lag_s=45),
+        Impact("congestion_pct", "mul", 0.5, lag_s=30),
         Impact("transit_delay_min", "mul", 0.8, lag_s=60),
     ),
     "poor_air": (
         Impact("pm25_ugm3", "mul", 2.2),
     ),
+    # Localised flooding: drains overwhelmed, streets under water, traffic crawls.
+    "flooding": (
+        Impact("water_level_cm", "add", 45.0, lag_s=10),
+        Impact("congestion_pct", "mul", 0.55, lag_s=30),
+        Impact("transit_delay_min", "mul", 1.0, lag_s=40),
+    ),
+    # A serious crash: reports first, then a queue builds behind it.
+    "road_accident": (
+        Impact("congestion_pct", "mul", 0.75, lag_s=20),
+        Impact("transit_delay_min", "mul", 0.9, lag_s=40),
+        Impact("pm25_ugm3", "mul", 0.15, lag_s=60),
+    ),
 }
 
 # Extra incident reports per minute (at full effect intensity) and their lag.
 EFFECT_INCIDENTS: dict[str, dict[str, tuple[float, float]]] = {
-    "heavy_rain": {"waterlogging": (2.6, 25), "tree_fall": (0.25, 40), "road_accident": (0.15, 50)},
+    "heavy_rain": {"waterlogging": (3.5, 25), "tree_fall": (0.25, 40), "road_accident": (0.15, 50)},
     "traffic_spike": {"road_accident": (0.25, 30)},
-    "incident_cluster": {"power_outage": (1.4, 0), "traffic_signal": (1.2, 15)},
+    "incident_cluster": {"power_outage": (2.4, 0), "traffic_signal": (1.8, 10)},
     "poor_air": {},
+    "flooding": {"waterlogging": (5.0, 15), "road_accident": (0.1, 40)},
+    "road_accident": {"road_accident": (3.0, 0), "traffic_signal": (0.2, 30)},
 }
 
 EFFECT_KINDS = tuple(EFFECT_IMPACTS)
+
+
+class SimClock:
+    """Scenario time, which can be paused or sped up independently of the wall clock.
+
+    Effects (rain, spikes…) are scheduled and evaluated in *scenario* time, so pausing freezes
+    them where they are and 2×/4× makes them unfold faster. Everything else — time of day,
+    noise, feed polling, the analysis windows — keeps running on the real clock. With no
+    pause/speed change the scenario time simply equals real time.
+    """
+
+    def __init__(self) -> None:
+        self.reset()
+
+    def reset(self) -> None:
+        self._anchor_real: datetime | None = None
+        self._anchor_sim: datetime | None = None
+        self.speed = 1.0
+        self.paused = False
+
+    def now(self, t: datetime) -> datetime:
+        if self._anchor_real is None:
+            return t
+        if self.paused:
+            return self._anchor_sim
+        return self._anchor_sim + (t - self._anchor_real) * self.speed
+
+    @property
+    def rate(self) -> float:
+        """Scenario seconds per real second (0 while paused)."""
+        return 0.0 if self.paused else self.speed
+
+    def set(self, t: datetime, *, speed: float | None = None, paused: bool | None = None) -> None:
+        current = self.now(t)
+        self._anchor_real, self._anchor_sim = t, current
+        if speed is not None:
+            self.speed = speed
+        if paused is not None:
+            self.paused = paused
 
 
 @dataclass
@@ -137,6 +190,8 @@ class CityModel:
     seed: int
     tz: ZoneInfo
     effects: list[Effect] = field(default_factory=list)
+    clock: SimClock = field(default_factory=SimClock)
+    _carry: dict[tuple[str, str], float] = field(default_factory=dict, repr=False)  # event reports owed
 
     # ------------------------------------------------------------------ utils
     def rng(self, *keys: object) -> random.Random:
@@ -182,11 +237,12 @@ class CityModel:
     def value(self, zone_id: str, metric: str, t: datetime, key: object = "") -> float:
         """Ground-truth value of a metric in a zone at time ``t``."""
         v = self.base_value(zone_id, metric, t)
-        for eff in self.active_effects(zone_id, t):
+        st = self.clock.now(t)  # effects run on scenario time
+        for eff in self.active_effects(zone_id, st):
             for imp in EFFECT_IMPACTS[eff.kind]:
                 if imp.metric != metric:
                     continue
-                level = eff.envelope(t, imp.lag_s)
+                level = eff.envelope(st, imp.lag_s)
                 v = v + imp.amount * level if imp.op == "add" else v * (1 + imp.amount * level)
 
         sd = self.NOISE_SD.get(metric, 0.0)
@@ -205,14 +261,17 @@ class CityModel:
         return round(FREE_FLOW_KMH * (1 - congestion / 100), 2)
 
     # --------------------------------------------------------------- incidents
-    def incident_rate(self, zone_id: str, category: str, t: datetime) -> float:
-        rate = BASE_INCIDENT_RATES.get(category, 0.0) * ZONE_CHARACTER[zone_id]["incidents"]
-        for eff in self.active_effects(zone_id, t):
-            extra = EFFECT_INCIDENTS.get(eff.kind, {}).get(category)
-            if extra:
-                per_min, lag = extra
-                rate += per_min * eff.envelope(t, lag)
-        return rate
+    def incident_rate(self, zone_id: str, category: str, t: datetime) -> tuple[float, float]:
+        """(normal background rate, extra rate caused by active effects), reports per minute."""
+        base = BASE_INCIDENT_RATES.get(category, 0.0) * ZONE_CHARACTER[zone_id]["incidents"]
+        extra = 0.0
+        st = self.clock.now(t)
+        for eff in self.active_effects(zone_id, st):
+            spec = EFFECT_INCIDENTS.get(eff.kind, {}).get(category)
+            if spec:
+                per_min, lag = spec
+                extra += per_min * eff.envelope(st, lag)
+        return base, extra
 
     def incidents_between(self, zone_id: str, t0: datetime, t1: datetime) -> list[dict]:
         """Deterministic Poisson draw of reports in [t0, t1) for one zone."""
@@ -222,9 +281,17 @@ class CityModel:
         mid = t0 + (t1 - t0) / 2
         out: list[dict] = []
         for category in BASE_INCIDENT_RATES:
-            lam = self.incident_rate(zone_id, category, mid) * dt_min
+            base, extra = self.incident_rate(zone_id, category, mid)
             rng = self.rng(zone_id, "inc", category, int(t0.timestamp()), int(t1.timestamp()))
-            for i in range(_poisson(lam, rng)):
+            # Background reports arrive randomly (Poisson). Reports caused by an event are
+            # emitted from an accumulator so they track the event's rate reliably — a scripted
+            # demo shouldn't stall on an unlucky streak. They follow scenario time: none while
+            # paused, faster at 2×/4×.
+            key = (zone_id, category)
+            self._carry[key] = self._carry.get(key, 0.0) + extra * self.clock.rate * dt_min
+            from_event = int(self._carry[key])
+            self._carry[key] -= from_event
+            for i in range(_poisson(base * dt_min, rng) + from_event):
                 ts = t0 + (t1 - t0) * rng.random()
                 lat, lon = self.random_point(zone_id, rng)
                 out.append({"category": category, "ts": ts, "lat": lat, "lon": lon,

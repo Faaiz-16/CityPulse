@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.geo.zones import ZONE_IDS, ZONES
 from app.schemas import HEALTHY_FEED_STATUSES, CityState
@@ -141,14 +141,33 @@ def timeline(p: CityPulse = Depends(get_pipeline)):
 # ------------------------------------------------------------------ simulation
 
 class EventRequest(BaseModel):
-    event: Literal["heavy_rain", "traffic_spike", "incident_cluster", "poor_air"]
+    event: Literal["heavy_rain", "traffic_spike", "incident_cluster", "poor_air", "flooding", "road_accident"]
     zone_id: str = Field(pattern=r"^Z[1-5]$")
     intensity: float = Field(1.0, ge=0.2, le=1.5)
     duration_s: float = Field(600, ge=60, le=3600)
 
 
 class ScenarioRequest(BaseModel):
-    name: Literal["full"] = "full"
+    name: str = Field("full", max_length=40)
+
+
+class PlaybackRequest(BaseModel):
+    action: Literal["pause", "resume", "speed"]
+    speed: float | None = None
+
+
+class CustomRequest(BaseModel):
+    zone_id: str = Field(pattern=r"^Z[1-5]$")
+    values: dict[str, float] = Field(default_factory=dict)
+    duration_s: float = Field(600, ge=60, le=3600)
+
+    @field_validator("values")
+    @classmethod
+    def _levels_in_range(cls, v: dict[str, float]) -> dict[str, float]:
+        for key, level in v.items():
+            if not 0 <= level <= 1.5:
+                raise ValueError(f"{key} must be between 0 and 1.5")
+        return v
 
 
 class FaultRequest(BaseModel):
@@ -174,11 +193,30 @@ def simulation_reset(p: CityPulse = Depends(get_pipeline)):
     return {"ok": True, "message": "Simulation reset to normal conditions."}
 
 
+@router.get("/simulation/scenarios")
+def simulation_scenarios(p: CityPulse = Depends(get_pipeline)):
+    return p.state.simulation["presets"]
+
+
 @router.post("/simulation/scenario")
 def simulation_scenario(body: ScenarioRequest, p: CityPulse = Depends(get_pipeline)):
-    p.run_full_scenario()
+    name = p.run_scenario(body.name)
     p.tick()
-    return {"ok": True, "message": "Full scenario started: heavy rain will begin over Zone 3 shortly."}
+    return {"ok": True, "message": f"Scenario started: {name}. Watch the map — it unfolds over the next minutes."}
+
+
+@router.post("/simulation/playback")
+def simulation_playback(body: PlaybackRequest, p: CityPulse = Depends(get_pipeline)):
+    message = p.playback(body.action, body.speed)
+    p.tick()
+    return {"ok": True, "message": message}
+
+
+@router.post("/simulation/custom")
+def simulation_custom(body: CustomRequest, p: CityPulse = Depends(get_pipeline)):
+    message = p.apply_custom(body.zone_id, body.values, body.duration_s)
+    p.tick()
+    return {"ok": True, "message": message}
 
 
 @router.post("/simulation/feed-fault")

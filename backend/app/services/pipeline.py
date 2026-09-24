@@ -28,7 +28,7 @@ from app.services.feed_manager import FEEDS, SYNTHETIC_PROVIDER, FeedManager
 from app.services.persistence import Persistence
 from app.services.store import ReadingStore
 from app.services.ticker import Ticker
-from app.simulation.controller import SimulationController
+from app.simulation.controller import SimulationController, SimulationError
 from app.simulation.replay import ReplayService
 
 log = logging.getLogger("citypulse.pipeline")
@@ -112,7 +112,8 @@ class CityPulse:
         for line in self.sim.advance(now):
             self._ticker(now, None, "simulation", line)
         # Forget finished events; live APIs pause only while a simulated event is active.
-        self.model.effects[:] = [e for e in self.model.effects if e.end >= now]
+        sim_now = self.model.clock.now(now)  # effects live on the (pausable) scenario clock
+        self.model.effects[:] = [e for e in self.model.effects if e.end >= sim_now]
         self.feeds.live_paused = bool(self.model.effects)
 
         result, _ = self.feeds.poll(now)
@@ -158,12 +159,48 @@ class CityPulse:
             self._ticker(now, zone_id, "simulation", f"Simulation: {effect.label} started.")
             return effect.label
 
-    def run_full_scenario(self, now: datetime | None = None) -> None:
+    def run_scenario(self, preset_id: str, now: datetime | None = None) -> str:
+        """Reset the city, then play a scenario preset. Returns the scenario name."""
         with self._lock:
             now = now or datetime.now(UTC)
+            preset = self.sim.preset(preset_id)  # validates before anything is reset
             self.reset(now, announce=False)
-            self.sim.start_full_scenario(now)
-            self.db.save_simulation_event(now, "full_scenario", "Z3", {})
+            scenario = self.sim.start_scenario(preset.id, now)
+            self.db.save_simulation_event(now, "scenario", scenario.focus_zone, {"preset": preset.id})
+            self._ticker(now, scenario.focus_zone, "simulation", f"Scenario started: {scenario.name}.")
+            return scenario.name
+
+    def run_full_scenario(self, now: datetime | None = None) -> None:
+        self.run_scenario("multi_event", now)
+
+    def playback(self, action: str, speed: float | None = None, now: datetime | None = None) -> str:
+        """Pause, resume or change the speed of the running scenario/events."""
+        with self._lock:
+            now = now or datetime.now(UTC)
+            if action == "pause":
+                self.sim.pause(now)
+                text = "Simulation paused."
+            elif action == "resume":
+                self.sim.resume(now)
+                text = "Simulation resumed."
+            elif action == "speed" and speed is not None:
+                self.sim.set_speed(speed, now)
+                text = f"Simulation speed set to {speed:g}×."
+            else:
+                raise SimulationError("Playback action must be 'pause', 'resume' or 'speed' (with a speed).")
+            self._ticker(now, None, "simulation", text)
+            return text
+
+    def apply_custom(self, zone_id: str, values: dict[str, float], duration_s: float = 600,
+                     now: datetime | None = None) -> str:
+        with self._lock:
+            now = now or datetime.now(UTC)
+            started = self.sim.set_custom(zone_id, values, duration_s, now)
+            self.db.save_simulation_event(now, "custom", zone_id, {"values": values, "duration_s": duration_s})
+            text = (f"Custom scenario in {zone_id}: " + ", ".join(started)) if started else \
+                "Custom scenario cleared."
+            self._ticker(now, zone_id, "simulation", text)
+            return text
 
     def set_feed_fault(self, feed_id: str, mode: str, now: datetime | None = None) -> None:
         with self._lock:

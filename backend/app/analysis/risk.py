@@ -21,6 +21,8 @@ _DISRUPTION_HEADLINES = {
     "rain_traffic": "Elevated traffic disruption risk",
     "rain_flooding": "Possible waterlogging disruption",
     "outage_traffic": "Possible disruption from outages",
+    "accident_traffic": "Possible traffic disruption after an accident",
+    "traffic_transit": "Heavy traffic slowing bus services",
     "traffic_air": "Traffic and air quality both worsening",
 }
 
@@ -28,6 +30,8 @@ _ADVICE = {
     "rain_traffic": "Allow extra travel time and expect slower roads and buses.",
     "rain_flooding": "Avoid low-lying roads and underpasses where water may collect.",
     "outage_traffic": "Treat junctions with signals down as all-way stops; expect delays.",
+    "accident_traffic": "Expect queues near the reported accident; use another route if you can.",
+    "traffic_transit": "Expect slower roads and buses; allow extra travel time.",
     "traffic_air": "People sensitive to air pollution may want to limit time near busy roads.",
 }
 

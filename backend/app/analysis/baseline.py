@@ -40,7 +40,7 @@ DEFAULT_BASELINES: dict[str, float] = {
     "water_level_cm": 1.5,
 }
 DEFAULT_INCIDENT_RATE_PER_MIN = {"incident_reports": 0.25, "waterlogging_reports": 0.006,
-                                 "outage_signal_reports": 0.012}
+                                 "outage_signal_reports": 0.012, "accident_reports": 0.01}
 
 
 def slot_of(t: datetime, tz: ZoneInfo) -> int:
