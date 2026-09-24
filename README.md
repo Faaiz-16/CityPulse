@@ -103,8 +103,20 @@ Full traceability: [docs/REQUIREMENTS_MATRIX.md](docs/REQUIREMENTS_MATRIX.md).
 
 ## Screenshots
 
-_Add screenshots of the normal state, the Zone 3 scenario and the zone panel to
-`docs/screenshots/` and link them here._
+**Normal state — the 10-second read**
+![All five zones normal](docs/screenshots/normal.jpg)
+
+**Heavy rain over Zone 3 — possible disruption, agent alert, heat-map timeline**
+![Zone 3 in possible disruption](docs/screenshots/disruption.jpg)
+
+**Investigation panel — possible impact, evidence and plain-language explanation**
+![Zone 3 details](docs/screenshots/zone.jpg)
+
+**Historical replay — yesterday's recorded storm, same engine, labelled not live**
+![Replay of the recorded storm](docs/screenshots/replay.jpg)
+
+Deep links for demos: `/?zone=Z3` opens a zone; `/?replay=1&frame=40` opens the replay at a
+recorded minute.
 
 ## Installation
 
@@ -201,15 +213,30 @@ backend/
     simulation/     demo events, scenario, synthetic history, historical replay
     services/       pipeline, feed manager, rolling store, persistence
     geo/            demo zones and geometry
-  tests/            98 tests (normalization, analysis, resilience, AI, agent, replay, API)
+  tests/            99 tests (normalization, analysis, resilience, AI, agent, replay, API)
 frontend/
   src/
     components/     TopBar, PulseStrip, map/, zone/, panels
     hooks/ services/ types/ utils/
-docs/               architecture, setup, file guide, requirements matrix
+docs/               guides, API, database, demo, presentation, judge Q&A, screenshots
 ```
 
 File-by-file explanation: [docs/FILE_GUIDE.md](docs/FILE_GUIDE.md).
+
+## Documentation
+
+| Document | For |
+|---|---|
+| [SETUP.md](docs/SETUP.md) | Installing, running, testing, troubleshooting |
+| [TEAM_GUIDE.md](docs/TEAM_GUIDE.md) | Beginner-friendly explanation of every part, and how to change it |
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Pipeline, algorithms, thresholds, design decisions |
+| [API.md](docs/API.md) | Every endpoint with real examples |
+| [DATABASE.md](docs/DATABASE.md) | Tables, indexes, seeding, migrations |
+| [FILE_GUIDE.md](docs/FILE_GUIDE.md) | What each file does |
+| [REQUIREMENTS_MATRIX.md](docs/REQUIREMENTS_MATRIX.md) | Brief requirement → feature → code → test → demo |
+| [DEMO.md](docs/DEMO.md) | Timed 3–5 minute demo script and recovery plan |
+| [PRESENTATION.md](docs/PRESENTATION.md) · [PITCH_SCRIPT.md](docs/PITCH_SCRIPT.md) | Slides and what to say |
+| [JUDGE_QA.md](docs/JUDGE_QA.md) | 36 likely judge questions with answers |
 
 ## Limitations
 

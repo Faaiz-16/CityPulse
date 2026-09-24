@@ -69,7 +69,7 @@ source .venv/bin/activate
 python -m pytest -q
 ```
 
-Expected: `98 passed`. Tests use a temporary database and a simulated clock, so they are fast
+Expected: `99 passed`. Tests use a temporary database and a simulated clock, so they are fast
 and deterministic.
 
 Frontend type-check and production build:

@@ -12,7 +12,7 @@ grouped in the order data flows through the system.
 | `README.md` | Project overview, setup, demo, API summary |
 | `.env.example` | Every configurable setting with safe defaults (copy to `backend/.env`) |
 | `.gitignore` | Keeps secrets, virtual environments, `node_modules`, builds and local databases out of git |
-| `docs/` | Architecture, setup, requirement matrix, this guide |
+| `docs/` | Setup, team guide, architecture, API, database, file guide, requirement matrix, demo, presentation, pitch script, judge Q&A, `screenshots/` |
 
 ---
 
@@ -157,7 +157,7 @@ validate input with Pydantic (`EventRequest`, `FaultRequest`); 404/400 with help
 | File | Purpose | Used by |
 |---|---|---|
 | `main.tsx` | Mounts `<App/>` | — |
-| `App.tsx` | Page layout: top bar, left column, map with overlays, zone panel; polling; state for selected zone, layers, demo panel | `main.tsx` |
+| `App.tsx` | Page layout: top bar, left column, map with overlays, zone panel; polling; live vs replay state; deep links (`?zone=Z3`, `?replay=1&frame=40`) | `main.tsx` |
 | `index.css` | Design tokens (colours), Tailwind import, map styling, dark basemap filter, animations (with reduced-motion support) | all components |
 | `types/index.ts` | TypeScript mirror of `backend/app/schemas.py` | everything |
 | `services/api.ts` | Typed API client with timeouts and readable error messages | `App`, `ZonePanel`, `DemoPanel` |
