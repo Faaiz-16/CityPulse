@@ -1,0 +1,329 @@
+# CityPulse — Architecture
+
+This document explains how CityPulse turns disconnected civic feeds into one understandable
+"pulse". It is written for someone new to the codebase; technical terms are explained the first
+time they appear.
+
+---
+
+## 1. The pipeline in one picture
+
+```
+ CIVIC SOURCES (5 feeds, 5 different raw formats)
+   weather · traffic/transit · 311-style reports · air quality · IoT water-level sensors
+        │   (synthetic city model by default; Open-Meteo live API optional)
+        ▼
+ FEED MANAGER ── fallback chain + health status (LIVE / SIMULATED / FALLBACK / DELAYED / STALE / UNAVAILABLE)
+        ▼
+ NORMALIZATION ── field mapping · UTC timestamps · unit conversion · zone mapping · validation · PII removal
+        ▼
+ COMMON CIVIC DATA MODEL  (CivicReading / CivicIncident)
+        ▼
+ ROLLING STORE (in memory, last 40 min)  ──►  DATABASE (history, alerts, snapshots — best effort)
+        ▼
+ ANALYSIS ENGINE
+   baselines (median/MAD by time of day) → anomaly detection → rolling-window correlation
+   → possible-impact / risk insight → zone status GREEN / YELLOW / RED
+        ▼
+ STRUCTURED CIVIC STATE  (CityState — the single source of truth)
+        ├──► MAP (React + Leaflet)             "What / where / how serious?"
+        ├──► AI / NLP layer                     plain-language summary (template or validated LLM)
+        └──► MONITORING AGENT                   opens / escalates / resolves alerts
+                     ▼
+              DETAILED DASHBOARD (zone panel)   "Why might this be happening?"
+```
+
+One **tick** of this pipeline runs every 3 seconds (`CITYPULSE_TICK_SECONDS`). The API never
+computes anything on request — it serves the latest `CityState`, so it stays fast even when a
+feed or the AI service is slow.
+
+## 2. Technology choices
+
+| Layer | Choice | Why |
+|---|---|---|
+| Backend | Python 3.11+, FastAPI, Pydantic, SQLAlchemy, Uvicorn | Fast to build, automatic request validation, typed data models |
+| Database | SQLite (WAL mode) | Zero setup for a 24-hour hackathon. All access goes through SQLAlchemy, so PostgreSQL is a one-line URL change |
+| Frontend | React 19, TypeScript, Vite, Tailwind CSS v4 | Component-based UI, type safety, instant dev reload |
+| Map | Leaflet + react-leaflet, OpenStreetMap tiles | Free, no API key, reliable |
+| Charts | Recharts | Lightweight React charts |
+| Icons | lucide-react | Consistent, accessible SVG icons |
+| AI | Anthropic Claude API (optional) | Rewrites structured facts into friendlier language; always validated, always optional |
+| Live data | Open-Meteo weather + air-quality APIs (optional) | Free, no key, stable |
+
+**Live updates use polling** (the browser asks for `/api/dashboard` every 3 s) rather than
+WebSockets. Polling is simpler, survives network blips automatically and is plenty fast for a
+civic dashboard.
+
+## 3. Data sources and their raw formats
+
+The brief says the hard part is fusing feeds that *disagree* about format, time and units. The
+synthetic feeds deliberately reproduce real-world messiness:
+
+| Feed | Raw format (vendor style) | Timestamp style | Units / identifiers to reconcile | Update interval |
+|---|---|---|---|---|
+| Weather | "CPMET" rain-gauge JSON | ISO-8601 with `+05:30` offset | rain in **mm per 15 min**, temperature in **°F**, wind in **m/s**; station IDs | 10 s |
+| Weather (live, optional) | Open-Meteo JSON | ISO without zone (UTC) | precipitation per 15-min interval | 10 min |
+| Traffic — roads | "TSN v2" JSON, camelCase | **epoch milliseconds** | raw **speed**; congestion must be derived from speed ÷ free-flow speed; sensor IDs | 5 s |
+| Traffic — buses | **CSV text** | **day-first local** `24/09/2026 15:07` | delay in **seconds**; operator area codes `CEN/NTH/EST/…` instead of zone IDs | 5 s |
+| Civic reports | Open311 GeoReport v2 JSON | ISO-8601 `Z` (UTC) | free-text service names ("Water Logging"); `long` not `lon`; **may contain personal fields** | 5 s |
+| Air quality | OpenAQ-like JSON | nested `date.utc` | **PM2.5 only** — CityPulse computes the US AQI itself | 20 s |
+| Air quality (live, optional) | Open-Meteo JSON | ISO without zone (UTC) | provides `us_aqi` + `pm2_5` | 10 min |
+| IoT water level | MQTT-style messages | **epoch seconds** | sensor ID hidden in the topic; value in **mm** inside a JSON *string* | 10 s |
+
+### The synthetic city (`data_sources/city_model.py`)
+A deterministic "ground truth" for every zone and moment:
+
+```
+value = daily pattern (rush hours, evening air-quality peak) × zone character
+        + active simulation effects (rain, traffic spike, outage cluster, poor air)
+        + small noise seeded from (seed, zone, metric, time)
+```
+
+Seeded noise means the same inputs always give the same outputs — demos and tests are
+repeatable. Simulation **effects** change the city, not the analysis: a heavy-rain effect raises
+rainfall immediately, then congestion (+20 s lag), water levels (+25 s), waterlogging reports
+(+25 s) and bus delays (+30 s). The analysis has to *discover* those relationships.
+
+## 4. Normalization → the common data model
+
+Every record becomes one of two shapes (`app/schemas.py`):
+
+**`CivicReading`** — a measurement
+`source, source_type, provider, zone_id, timestamp (UTC), ingested_at, metric, value, unit,
+confidence, data_status (live | simulated | fallback), sensor_id, lat, lon, metadata`
+
+**`CivicIncident`** — an anonymous report
+`id, source, zone_id, timestamp, ingested_at, category, severity, lat, lon, confidence,
+data_status, metadata` — there is deliberately **no field that could hold personal data**.
+
+Each normalizer (`normalization/normalizers.py`) does six things per record:
+1. map vendor field names → common names,
+2. parse the timestamp convention → timezone-aware UTC (`timestamps.py`),
+3. convert units → canonical units (`units.py`: mm/h, °C, km/h, %, min, µg/m³, AQI, cm),
+4. map the location/identifier → a zone (sensor registry, operator code table, or
+   point-in-polygon test),
+5. validate the value against a plausible range,
+6. **reject bad records one by one** with a reason, so good records keep flowing.
+
+Timestamps in the future (> 5 min skew) are rejected. For reports, only whitelisted fields
+survive; account IDs and phone numbers are dropped and never stored.
+
+## 5. Zones
+
+Five **demonstration zones** drawn over central Delhi as a realistic backdrop
+(`geo/zones.py`). They are *not* official boundaries and the UI says so. Each zone has a
+polygon, a label anchor and five simulated sensors (2 traffic, 1 rain gauge, 1 air monitor,
+1 water-level sensor). A ray-casting point-in-polygon test maps any coordinate to a zone.
+
+## 6. Baselines — "what is normal here, now?"
+
+Traffic at 9 a.m. is not comparable with traffic at 3 a.m., so baselines are learned per
+**zone × metric × half-hour of the day** from 3 days of stored history (`analysis/baseline.py`).
+
+We use the **median** (middle value) and **MAD** (median absolute deviation) instead of mean and
+standard deviation. They are *robust*: the recorded storm in the history barely moves them.
+Neighbouring half-hours are pooled (±30 min) so each baseline has enough samples.
+
+Report baselines are **rates** (reports per minute) for the same time-of-day slot, turned into
+an "expected count" for the rolling window.
+
+If no history is available (e.g. the database is down at start-up), documented default
+baselines are used and the UI shows `baseline_history_days = 0`.
+
+## 7. Anomaly detection (`analysis/anomaly.py`)
+
+For every metric CityPulse computes: **current value** (mean over the current window),
+**baseline**, **% deviation**, a **robust z-score**, the **threshold rule**, **anomaly yes/no**,
+**severity** and **trend** (rising / falling / steady over the last 3 minutes).
+
+| Metric | Rule | Default threshold (`config.py`) | Severity |
+|---|---|---|---|
+| Traffic congestion | relative | ≥ **+30 %** vs baseline | low · moderate ≥ 1.4× · high ≥ 2× threshold |
+| Bus delays | relative | ≥ **+50 %** | same scaling |
+| Rainfall | absolute | ≥ **7.6 mm/h** (meteorological "heavy rain") | high ≥ 15.2 mm/h |
+| Street water level | absolute | ≥ **15 cm** | high ≥ 30 cm |
+| Air quality (US AQI) | hybrid | AQI ≥ **150** *or* ≥ **+25 %** vs baseline | high ≥ 200 |
+| Report counts (all / waterlogging / outages) | count + statistics | ≥ **3** reports, ≥ **+40 %** and **Poisson p < 0.001** | by count and size |
+
+Why an absolute rule for rain: normal rainfall is ~0, so "+900 %" is meaningless.
+
+Why a Poisson test for reports: reports arrive randomly. Seeing 4 when ~2 are expected happens
+all the time. The Poisson tail probability says how likely a count is *by pure chance*; because
+we check 5 zones × 3 report types every 3 seconds, a strict level (0.1 %) avoids false alarms
+from multiple comparisons.
+
+Example from the brief: traffic 147 vs baseline 100 → +47 % ≥ 30 % → **anomaly (moderate)**.
+
+## 8. Rolling-window correlation (`analysis/correlation.py`)
+
+A relationship is only *considered* when all of these hold:
+
+1. a **logical rule** says the signals can plausibly be connected,
+2. the "driver" **and** at least one "response" signal are **anomalous**,
+3. they are in the **same zone**,
+4. they are inside the same **rolling window** (default **10 min**),
+5. the **timing fits** (the response did not clearly start before the driver).
+
+| Rule | Driver | Response(s) | Supporting |
+|---|---|---|---|
+| `rain_traffic` | rainfall | traffic congestion | bus delays |
+| `rain_flooding` | rainfall | waterlogging reports, street water level | — |
+| `outage_traffic` | power/signal outage reports | traffic congestion | bus delays |
+| `traffic_air` | traffic congestion | air quality | — |
+
+**Evidence score** (0–1): 0.40 base + up to 0.15 each for driver and response severity + 0.15
+if timing fits (−0.10 if not) + up to 0.10 for **co-movement** (Pearson correlation of the two
+series in 20-second bins over the window) + up to 0.10 for extra/supporting signals.
+**Strong ≥ 0.8 · Moderate ≥ 0.6 · Weak** otherwise.
+
+Wording is fixed: *"…are occurring in the same zone and time window. These signals may be
+related."* Every relationship carries the caveat *"a possible link … not a confirmed cause."*
+Weak relationships are shown as **insufficient evidence**.
+
+What CityPulse says when there is **no** relationship:
+- a driver alone (rain, nothing else unusual) → *"no disruption link detected"*,
+- a response alone (traffic up, nothing related) → *"insufficient evidence to suggest any
+  explanation"*,
+- a feed is down → *"Weather data is unavailable, so CityPulse cannot check whether heavy
+  rainfall is linked to …"*.
+
+## 9. Possible impact / risk insight (`analysis/risk.py`)
+
+| Insight | Condition | Example headline |
+|---|---|---|
+| **Potential disruption** (high) | ≥ 1 moderate/strong relationship **and** ≥ 2 anomalies of moderate+ severity in the zone | "Elevated traffic disruption risk in Zone 3 — East" |
+| **Early warning** (elevated) — traffic | rain anomalous, congestion ≥ +10 % and **rising**, but below the 30 % threshold | "Traffic may slow in Zone 3 — East" |
+| **Early warning** — water | rain anomalous, water level ≥ half the flag level and rising | "Water may collect on streets in Zone 3 — East" |
+
+Early warnings address the brief's pain point "alerts are reactive, not predictive": they fire
+*before* the second signal crosses its threshold, and they say so.
+
+### Zone status
+- **RED — Possible disruption:** a potential-disruption insight, or ≥ 2 high-severity anomalies.
+- **YELLOW — Attention:** any anomaly, relationship or early warning.
+- **GREEN — Normal:** nothing unusual.
+
+Status is always shown as **colour + icon + word**, never colour alone.
+
+## 10. Feed resilience (`services/feed_manager.py`)
+
+```
+Feed with a live public API (weather, air quality):
+   live API ──ok──► LIVE
+      │ timeout / HTTP error / 429 rate limit / malformed JSON / no usable records
+      ▼
+   synthetic estimate labelled FALLBACK ("not live data")  + 60 s back-off before retrying live
+
+Feed whose upstream is the synthetic city (traffic, reports, sensors):
+   OK ──► SIMULATED
+   failing ──► FALLBACK (last known values, age shown) ──► UNAVAILABLE after the cache TTL
+   silent  ──► DELAYED (> 3 intervals late) ──► STALE (> 8 intervals) ──► UNAVAILABLE (> 10 min)
+```
+
+Rules that keep the system honest:
+- Nothing is ever labelled LIVE unless it came from a real API.
+- Stale/cached data is displayed with its age but **ages out of the analysis window** — it is
+  not treated as current.
+- Missing data makes a metric `available: false` ("not assessed"), never zero.
+- Every feed is polled inside its own `try/except`; one broken feed cannot stop the others.
+- Report feeds catch up after an outage (they ask for everything since the last success).
+
+**Database resilience:** analysis reads only the in-memory store. Every database call is
+best-effort (`services/persistence.py`); on failure the pulse keeps running,
+`/api/health` reports `storage: degraded`, and default baselines are used if history can't load.
+
+**API errors:** validation problems return `422` with field messages; unknown zones `404`;
+unexpected errors return a generic `500` message — stack traces stay in the server log.
+
+## 11. AI / NLP layer (`app/ai/`)
+
+```
+CityState ──► facts.py (compact fact sheet) ──► templates.py ──► always-available summary
+                                   │
+                                   └──► llm.py (Claude, structured output) ──► validator.py ──► shown only if it passes
+```
+
+- The **template** summary is built every tick and is the default.
+- If `ANTHROPIC_API_KEY` is set and the *situation* changes (fingerprint of statuses,
+  anomalies, relationships and feed health), an LLM rewrite is requested **in a background
+  thread** — the pipeline never waits for it; at most one call per 20 s.
+- The model sees only the fact sheet, never raw feeds, and must return a fixed JSON shape
+  (`messages.parse` with a Pydantic schema).
+- The **validator** rejects the text if it contains any number not present in the facts, any
+  causal phrase ("caused", "due to", "led to", "because of", …) or a zone that isn't flagged.
+- Any failure (no key, network, timeout, rate limit, refusal, validation) → the template stays.
+  The UI labels which one is shown: *Rule-based* or *AI-assisted*.
+
+## 12. Monitoring agent (`agent/monitor.py`)
+
+Runs after every analysis tick:
+
+```
+CHECK FEEDS → CHECK DATA QUALITY → CHECK ANOMALIES → CHECK RELATED SIGNALS
+  → CHECK ROLLING WINDOW → DECIDE → OPEN / ESCALATE / RESOLVE ALERTS → EXPLAIN (trace)
+```
+
+- Alert types: potential disruption (critical), early warning, possible link, highly unusual
+  single signal, feed data-quality problem.
+- Each alert stores **observed** facts, the **possible relationship** and a fixed **causation
+  note** separately.
+- **Hysteresis:** an alert resolves only after its condition is absent for 3 consecutive checks,
+  so noise doesn't make it flicker. Lower alerts for a zone are folded into its critical alert.
+- The last reasoning trace is shown in the zone panel ("Monitoring agent — last check").
+- It is rule-driven: it can only raise alerts about facts present in the civic state.
+
+## 13. Simulation and demo (`app/simulation/`)
+
+- **Events:** heavy rain, traffic spike, outage cluster, poor air — any zone.
+- **Feed faults:** outage, delay, malformed — any feed.
+- **Full scenario** ("Monsoon evening in Zone 3"): reset → heavy rain over Zone 3 at +6 s →
+  an unrelated traffic build-up in Zone 1 at +70 s (to show CityPulse does *not* link it to rain).
+- Scenario **stages** (Rain begins → Traffic increases → Reports increase → Anomalies →
+  Possible link → Potential disruption) are ticked off from the **actual analysis output**, not
+  a timer, so the checklist proves what the system detected and when (≈ 90 s end-to-end).
+- **Warm-up:** on start and reset, the last 10 minutes are back-filled so rolling windows are
+  meaningful immediately.
+
+## 14. Frontend structure
+
+```
+App.tsx
+├── TopBar ── PulseStrip (heartbeat: colour = worst status, speed = activity) · FeedHealthBar
+├── Left column ── DemoPanel (optional) · SummaryPanel ("Right now") · AlertsList (agent) · EventTicker
+└── Map area
+    ├── CityMap ── zone polygons · zone labels · rain cells · report dots · IoT sensors
+    ├── LayerToggles · MapLegend · PulseTimeline (zone × time heat-map)
+    └── ZonePanel ── risk cards · explanation · metric cards · relationship cards ("Why this flag?")
+                     · 15-minute chart · recent reports · agent trace · data sources
+```
+
+`usePolling` keeps the last good data when a request fails and shows a "connection lost" banner
+instead of blanking the screen.
+
+**10-second read:** the default view shows five zones, each with one status word, an icon and
+issue chips, plus a one-sentence headline. Details live one click away.
+
+## 15. Database schema (summary)
+
+| Table | Purpose | Key index |
+|---|---|---|
+| `zones` | zone names + GeoJSON boundary | PK |
+| `civic_readings` | normalized readings (history + live, `is_history` flag) | `(zone_id, metric, ts)` |
+| `incidents` | anonymous reports | `(zone_id, ts)` |
+| `alerts` | agent alerts with observed / possible link / causation note | `key` |
+| `zone_snapshots` | status every 15 s (heat-map timeline, audit) | `ts` |
+| `simulation_events` | log of demo actions | PK |
+
+Anomalies and relationships are **recomputed** from readings every tick (they are derived
+data), and recorded per snapshot, so no separate tables are needed. Schema is created with
+`Base.metadata.create_all`; for a production deployment, add Alembic migrations.
+
+## 16. Known limitations
+
+- Zones and most data are synthetic; the analysis is designed for real feeds but has not been
+  calibrated on them.
+- Relationship rules are hand-written from domain knowledge; they can miss unexpected links.
+- Correlation ≠ causation: CityPulse can show that signals overlap, never why.
+- In live mode the AQI baseline is still learned from synthetic history, so only the absolute
+  AQI rule is applied to live values.
+- The LLM path is covered by unit tests with a mocked client; it depends on a valid API key.
