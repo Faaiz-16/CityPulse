@@ -7,19 +7,25 @@ computed and checked. That is the main defence against invented events or number
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+from app.ai.templates import importance
 from app.schemas import HEALTHY_FEED_STATUSES, FeedHealth, ZoneState, ZoneStatus
 
 _SEV_RANK = {"none": 0, "low": 1, "moderate": 2, "high": 3}
-_STATUS_RANK = {ZoneStatus.RED: 0, ZoneStatus.YELLOW: 1, ZoneStatus.GREEN: 2}
+
+
+MAX_AREAS = 10  # the most unusual areas; the rest are summarised as a count
 
 
 def build_facts(zones: list[ZoneState], feeds: list[FeedHealth], now: datetime, tz: ZoneInfo,
                 window_minutes: int) -> dict:
-    ordered = sorted(zones, key=lambda z: (_STATUS_RANK[z.status], z.number))
+    ordered = sorted(zones, key=importance)
+    unusual = [z for z in ordered if z.status != ZoneStatus.GREEN][:MAX_AREAS]
     return {
         "as_of_local_time": now.astimezone(tz).strftime("%H:%M"),
         "rolling_window_minutes": window_minutes,
         "city_status": ordered[0].status.value if ordered else "GREEN",
+        "areas_total": len(zones),
+        "areas_normal": sum(1 for z in zones if z.status == ZoneStatus.GREEN),
         "zones": [
             {
                 "zone_id": z.id,
@@ -40,7 +46,7 @@ def build_facts(zones: list[ZoneState], feeds: list[FeedHealth], now: datetime, 
                 "insufficient_evidence": z.insufficient_evidence,
                 "cannot_assess": z.cannot_assess,
             }
-            for z in ordered
+            for z in unusual
         ],
         "degraded_feeds": [
             {"feed": f.label, "status": f.status.value, "note": f.message}

@@ -12,6 +12,7 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -56,6 +57,7 @@ def create_app() -> FastAPI:
         version="1.0.0",
         lifespan=lifespan,
     )
+    app.add_middleware(GZipMiddleware, minimum_size=2000)  # 81 areas: the dashboard compresses ~10×
     app.add_middleware(
         CORSMiddleware, allow_origins=settings.cors_origin_list, allow_methods=["GET", "POST"],
         allow_headers=["Content-Type"],

@@ -5,7 +5,7 @@ import { PlaybackControls } from "./drawers/DemoDrawer";
 type Act = (fn: () => Promise<{ message: string }>) => Promise<void>;
 
 /** While a demo runs and the drawer is closed: what's playing, progress, pause/speed. */
-export function DemoPill({ sim, act, onOpen }: { sim: SimulationStatus; act: Act; onOpen: () => void }) {
+export function DemoPill({ sim, place, act, onOpen }: { sim: SimulationStatus; place?: string; act: Act; onOpen: () => void }) {
   const sc = sim.scenario;
   const done = sc ? sc.stages.filter((s) => s.reached_at).length : 0;
   return (
@@ -16,14 +16,16 @@ export function DemoPill({ sim, act, onOpen }: { sim: SimulationStatus; act: Act
         {sc ? (
           <>
             <span className="font-semibold">{sc.name}</span>
-            <span className="font-mono text-[var(--muted)]">T+{sc.elapsed_s}s</span>
-            <span className="hidden text-[var(--muted)] sm:inline">· {done}/{sc.stages.length} detected{sim.clock.paused ? " · paused" : ""}</span>
+            {place && <span className="text-[var(--muted)]">· {place}</span>}
+            {!sc.complete && (
+              <span className="hidden text-[var(--muted)] sm:inline">· {done}/{sc.stages.length} detected{sim.clock.paused ? " · paused" : ""}</span>
+            )}
           </>
         ) : (
           <span className="text-[var(--muted)]">{sim.active_events.length} simulated event{sim.active_events.length === 1 ? "" : "s"}</span>
         )}
       </button>
-      <PlaybackControls sim={sim} busy={false} act={act} compact />
+      {sc && !sc.complete && <PlaybackControls sim={sim} busy={false} act={act} compact />}
     </div>
   );
 }

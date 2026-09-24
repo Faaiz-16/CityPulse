@@ -5,9 +5,16 @@ whenever the AI layer is disabled, slow, failing or produces something the valid
 """
 
 from app.analysis.metrics import usual_reports, verb_for
+from app.geo.zones import cell_distance
 from app.schemas import SummarySection, ZoneState, ZoneStatus
 
 _STATUS_RANK = {ZoneStatus.RED: 0, ZoneStatus.YELLOW: 1, ZoneStatus.GREEN: 2}
+_SEV = {"none": 0, "low": 1, "moderate": 2, "high": 3}
+
+
+def importance(z: ZoneState) -> tuple:
+    """Sort key: worst status first, then the area with the most (and most severe) signals."""
+    return (_STATUS_RANK[z.status], -(10 * len(z.risks) + sum(_SEV[a.severity] for a in z.anomalies)), z.number)
 
 
 def _fmt_num(v: float | None) -> str:
@@ -58,7 +65,7 @@ def zone_explanation(z: ZoneState) -> SummarySection:
     strong = [r for r in z.relationships if r.strength != "weak"]
     if strong:
         signals = list(dict.fromkeys(label for r in strong for label in _signal_names(r.signals)))
-        connection = (f"{_join(signals).capitalize()} are occurring in the same zone and time window, "
+        connection = (f"{_join(signals).capitalize()} are occurring in the same area and time window, "
                       f"so these signals may be related. This is a possible link, not a confirmed cause.")
     elif z.insufficient_evidence:
         connection = z.insufficient_evidence[0]
@@ -73,11 +80,11 @@ def zone_explanation(z: ZoneState) -> SummarySection:
 
 def city_summary(zones: list[ZoneState], degraded_feeds: list[str]) -> tuple[str, SummarySection]:
     """Headline + three-part explanation for the whole city."""
-    ordered = sorted(zones, key=lambda z: (_STATUS_RANK[z.status], z.number))
+    ordered = sorted(zones, key=importance)
     unusual = [z for z in ordered if z.status != ZoneStatus.GREEN]
 
     if not unusual:
-        headline = "All zones look normal right now."
+        headline = "All areas look normal right now."
         sections = SummarySection(
             whats_happening="Weather, traffic, civic reports, air quality and street sensors are all "
                             "within their usual range across the city.",
@@ -89,12 +96,20 @@ def city_summary(zones: list[ZoneState], degraded_feeds: list[str]) -> tuple[str
         headline = f"{top.name}: {top.status_label.lower()} — {top.headline.lower()}."
         if len(unusual) > 1:
             others = len(unusual) - 1
-            headline += f" {others} other zone{'s need' if others > 1 else ' needs'} attention."
-        parts = [zone_explanation(z) for z in unusual[:3]]
-        calm = [z.short_name for z in ordered if z.status == ZoneStatus.GREEN]
+            headline += f" {others} more area{'s are' if others > 1 else ' is'} affected."
+        # One explanation per hotspot (its most affected area); touching areas are summarised.
+        leads: list[ZoneState] = []
+        for z in unusual:
+            if not any(cell_distance(z.id, lead.id) < 1.5 for lead in leads):
+                leads.append(z)
+        parts = [zone_explanation(z) for z in leads[:2]]
         happening = " ".join(p.whats_happening for p in parts)
-        if calm:
-            happening += f" {_join(calm)} {'is' if len(calm) == 1 else 'are'} normal."
+        nearby = len(unusual) - len(leads)
+        if nearby:
+            happening += f" {nearby} neighbouring area{'s show' if nearby > 1 else ' shows'} similar signals."
+        if len(leads) > 2:
+            happening += f" {len(leads) - 2} other area{'s' if len(leads) > 3 else ''} elsewhere also show unusual signals."
+        happening += " The rest of the city is normal."
         sections = SummarySection(
             whats_happening=happening,
             why_it_matters=" ".join(dict.fromkeys(p.why_it_matters for p in parts)),

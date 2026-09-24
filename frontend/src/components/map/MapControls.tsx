@@ -47,9 +47,9 @@ export function PulseLegend() {
       </button>
       {open && (
         <ul className="mt-2 space-y-1.5 text-[#cbd5e1]">
-          <li className="flex items-center gap-2"><Swatch><span className="h-3 w-5 rounded-sm border-2 border-[#f87171] bg-[#f8717140]" /></Swatch>Possible disruption</li>
-          <li className="flex items-center gap-2"><Swatch><span className="h-3 w-5 rounded-sm border-2 border-[#fbbf24] bg-[#fbbf2414]" /></Swatch>Needs attention</li>
-          <li className="flex items-center gap-2"><Swatch><span className="h-3 w-5 rounded-sm border border-dashed border-[#34d399]" /></Swatch>Normal</li>
+          <li className="flex items-center gap-2"><Swatch><span className="h-3.5 w-3.5 border border-[#f87171] bg-[#f8717126]" /></Swatch>Possible disruption</li>
+          <li className="flex items-center gap-2"><Swatch><span className="h-3.5 w-3.5 border border-[#fbbf24aa] bg-[#fbbf2414]" /></Swatch>Needs attention</li>
+          <li className="flex items-center gap-2"><Swatch><span className="h-3.5 w-3.5 border border-[#94a3b855]" /></Swatch>Normal area</li>
           <li className="flex items-center gap-2"><Swatch><span className="flex gap-0.5"><i className="h-1.5 w-1.5 rounded-full bg-[#7dd3fc] shadow-[0_0_6px_#38bdf8]" /><i className="h-1.5 w-1.5 rounded-full bg-[#38bdf8] shadow-[0_0_6px_#38bdf8]" /></span></Swatch>Rain</li>
           <li className="flex items-center gap-2"><Swatch><span className="h-1 w-5 rounded-full bg-[#f87171] shadow-[0_0_6px_#f87171]" /></Swatch>Heavy traffic</li>
           <li className="flex items-center gap-2"><Swatch><Zap size={13} color="#facc15" /></Swatch>Power / signal outage</li>
@@ -58,7 +58,7 @@ export function PulseLegend() {
           <li className="flex items-center gap-2"><Swatch><span className="h-3 w-5 rounded-full bg-[#a855f7] opacity-60 blur-[2px]" /></Swatch>Poor air</li>
         </ul>
       )}
-      {open && <p className="mt-2 text-[10px] leading-snug text-[var(--faint)]">Demonstration zones — not official boundaries.</p>}
+      {open && <p className="mt-2 text-[10px] leading-snug text-[var(--faint)]">Jaipur in a 9 × 9 grid of ~2.5 km demonstration areas — not official wards.</p>}
     </div>
   );
 }

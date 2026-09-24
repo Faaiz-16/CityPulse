@@ -44,7 +44,9 @@ caused, led to, triggered or was due to another.
 - Write for a non-technical resident: short sentences, no jargon, no statistics terms.
 - headline: one sentence, at most 20 words.
 - whats_happening / why_it_may_matter / possible_connection: 1–3 sentences each, city-wide.
-- zones: one entry for every zone whose status is not GREEN, using its zone_id; empty list if none."""
+- The city is a grid of areas; each has a zone_id (a grid reference such as "F4") and a zone_name. \
+Only unusual areas are listed; areas_normal counts the rest.
+- zones: one entry for every area listed in the sheet, using its zone_id; empty list if none."""
 
 
 def generate(facts: dict, api_key: str, model: str, timeout: float) -> SummaryOut | None:

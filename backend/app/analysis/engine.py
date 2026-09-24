@@ -93,7 +93,8 @@ class AnalysisEngine:
         n_anom = sum(len(z.anomalies) for z in zones)
         n_rel = sum(len([r for r in z.relationships if r.strength != "weak"]) for z in zones)
         city = ZoneStatus.RED if counts["RED"] else ZoneStatus.YELLOW if counts["YELLOW"] else ZoneStatus.GREEN
-        bpm = min(140, 62 + 6 * n_anom + 18 * counts["RED"])
+        # 81 small areas: a storm lights up several, so both terms are capped (max 138 bpm).
+        bpm = 62 + min(40, 3 * n_anom) + min(36, 12 * counts["RED"])
         return PulseInfo(city_status=city, bpm=bpm, active_anomalies=n_anom,
                          active_relationships=n_rel, zones_by_status=counts)
 
@@ -153,7 +154,7 @@ class AnalysisEngine:
         return ZoneState(
             id=zone.id, number=zone.number, name=zone.name, short_name=zone.short_name,
             status=status, status_label=STATUS_LABELS[status],
-            headline=self._headline(status, anomalies, risks),
+            headline=self._headline(status, anomalies, risks, zone.name),
             issue_types=sorted({METRICS[a.metric].icon for a in anomalies}),
             metrics=metrics, anomalies=anomalies, relationships=relationships, risks=risks,
             insufficient_evidence=insufficient, cannot_assess=cannot, incident_counts=counts,
@@ -167,14 +168,15 @@ class AnalysisEngine:
         )
 
     @staticmethod
-    def _headline(status: ZoneStatus, anomalies: list[Anomaly], risks) -> str:
+    def _headline(status: ZoneStatus, anomalies: list[Anomaly], risks, zone_name: str) -> str:
+        where = f" in {zone_name}"
         if status == ZoneStatus.RED:
             disruption = [r for r in risks if r.kind == "potential_disruption"]
             if disruption:
-                return disruption[0].headline.split(" in Zone")[0]
+                return disruption[0].headline.replace(where, "")
             return "Several signals highly unusual"
         if risks:
-            return risks[0].headline.split(" in Zone")[0]
+            return risks[0].headline.replace(where, "")
         if anomalies:
             return _SHORT_PHRASE.get(anomalies[0].metric, "Unusual activity")
         return "Conditions normal"

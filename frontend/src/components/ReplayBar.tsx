@@ -15,6 +15,13 @@ export function ReplayBar({ replay, zones }: { replay: ReplayControls; zones: Zo
   if (!meta) return null;
   const frames = meta.frames;
   const current = frames[index];
+  // Only the areas the storm touched get a row (most affected first); 81 rows would be noise.
+  const affected = zones
+    .map((z) => ({ z, n: frames.filter((f) => f.statuses[z.id] !== "GREEN").length }))
+    .filter((r) => r.n > 0)
+    .sort((a, b) => b.n - a.n)
+    .slice(0, 5)
+    .map((r) => r.z);
   const pct = (i: number) => (frames.length > 1 ? (i / (frames.length - 1)) * 100 : 0);
 
   return (
@@ -82,8 +89,8 @@ export function ReplayBar({ replay, zones }: { replay: ReplayControls; zones: Zo
       {/* Scrubber: zone × time status strip with a transparent range input on top */}
       <div className="relative mt-3">
         <div className="space-y-px overflow-hidden rounded-md" aria-hidden>
-          {zones.map((z) => (
-            <div key={z.id} className="flex h-2">
+          {affected.map((z) => (
+            <div key={z.id} className="flex h-2" title={z.name}>
               {frames.map((f) => {
                 const s = f.statuses[z.id];
                 return <div key={f.i} className="flex-1" style={{ background: MAP_STATUS[s], opacity: s === "GREEN" ? 0.25 : 0.9 }} />;
@@ -110,7 +117,7 @@ export function ReplayBar({ replay, zones }: { replay: ReplayControls; zones: Zo
         />
         <div className="mt-1 flex justify-between font-mono text-[10px] text-[var(--faint)]">
           <span>{clockTime(frames[0]?.t, false)}</span>
-          <span>rows: zones 1–5 · each column = 1 recorded minute</span>
+          <span>rows: {affected.length ? affected.map((z) => z.short_name).join(", ") : "no area affected"} · 1 column = 1 minute</span>
           <span>{clockTime(frames[frames.length - 1]?.t, false)}</span>
         </div>
       </div>

@@ -17,9 +17,9 @@ import { clockTime } from "./utils/format";
 
 const POLL_MS = 3000;
 
-// Deep links: ?zone=Z3 opens a zone; ?replay=1&frame=30 opens the replay at a recorded minute.
+// Deep links: ?zone=F4 opens an area; ?replay=1&frame=30 opens the replay at a recorded minute.
 const params = new URLSearchParams(window.location.search);
-const INITIAL_ZONE = /^Z[1-9]$/.test(params.get("zone") ?? "") ? params.get("zone") : null;
+const INITIAL_ZONE = /^[A-I][1-9]$/.test(params.get("zone") ?? "") ? params.get("zone") : null;
 const INITIAL_REPLAY = params.get("replay") === "1";
 const INITIAL_FRAME = Number(params.get("frame") ?? 0) || 0;
 const INITIAL_DRAWER = params.get("demo") === "1" ? "demo" : params.get("insights") === "1" ? "insights" : null;
@@ -31,6 +31,7 @@ type LeftDrawer = "demo" | "insights" | null;
 export default function App() {
   const dashboard = usePolling(api.dashboard, POLL_MS);
   const boundaries = usePolling(api.zones, 60000);
+  const mapInfo = usePolling(api.map, 3_600_000); // grid + main roads: static
   const timeline = usePolling(api.timeline, 15000);
   const [layers, setLayers] = useState<MapLayers>({ rain: true, traffic: true, reports: true, air: true, sensors: false });
   const replay = useReplay(INITIAL_REPLAY ? INITIAL_FRAME : null);
@@ -52,6 +53,11 @@ export default function App() {
   }, [refreshAll]);
   const closeZone = useCallback(() => setSelectedZone(null), []);
   const closeDrawer = useCallback(() => setDrawer(null), []);
+  // A demo situation is ready: close the drawer and take the viewer straight to it.
+  const showSituation = useCallback((zoneId: string | null) => {
+    setDrawer(null);
+    setSelectedZone(zoneId);
+  }, []);
   const { start: startReplayRaw } = replay;
   const startReplay = useCallback(() => {
     setDrawer(null);
@@ -98,7 +104,7 @@ export default function App() {
     <div className="relative h-full w-full overflow-hidden">
       {/* The map is the hero: full-bleed, everything else floats over it. */}
       <div className="absolute inset-0">
-        <CityMap boundaries={boundaries.data ?? []} zones={state.zones} sensors={sensors.data ?? []} layers={layers}
+        <CityMap boundaries={boundaries.data ?? []} mapInfo={mapInfo.data} zones={state.zones} sensors={sensors.data ?? []} layers={layers}
           selectedZone={selectedZone} panelOpen={!!zone} onSelectZone={setSelectedZone} />
       </div>
       <div className="map-vignette absolute inset-0 z-[400]" aria-hidden />
@@ -117,7 +123,8 @@ export default function App() {
         )}
         {demoActive && drawer !== "demo" && (
           <div className="absolute left-1/2 top-[76px] hidden -translate-x-1/2 md:block">
-            <DemoPill sim={sim} act={act} onOpen={() => setDrawer("demo")} />
+            <DemoPill sim={sim} act={act} onOpen={() => setDrawer("demo")}
+              place={state.zones.find((z) => z.id === sim.scenario?.focus_zone)?.short_name} />
           </div>
         )}
         {offline && (
@@ -135,7 +142,8 @@ export default function App() {
         {drawer && (
           <div className="absolute bottom-3 left-3 top-[76px] flex max-w-[calc(100%-24px)]">
             {drawer === "demo" && !inReplay && (
-              <DemoDrawer sim={sim} zones={state.zones} feeds={state.feeds} onClose={closeDrawer} onChanged={refreshAll} onStartReplay={startReplay} />
+              <DemoDrawer sim={sim} zones={state.zones} feeds={state.feeds} onClose={closeDrawer} onChanged={refreshAll}
+                onStartReplay={startReplay} onShow={showSituation} />
             )}
             {drawer === "insights" && (
               <InsightsDrawer state={state} timeline={timeline.data ?? []} now={now}
@@ -147,7 +155,7 @@ export default function App() {
         {/* right: the zone story, only when asked for */}
         {zone && (
           <div className="absolute bottom-3 right-3 top-[76px] z-10 flex max-w-[calc(100%-24px)]">
-            <ZonePanel zone={zone} feeds={state.feeds} now={now} loadDetail={loadDetail} onClose={closeZone} />
+            <ZonePanel key={zone.id} zone={zone} feeds={state.feeds} now={now} loadDetail={loadDetail} onClose={closeZone} />
           </div>
         )}
 

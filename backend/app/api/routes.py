@@ -7,7 +7,8 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field, field_validator
 
-from app.geo.zones import ZONE_IDS, ZONES
+from app.geo import zones as grid
+from app.geo.zones import ZONE_IDS, ZONES, load_roads
 from app.schemas import HEALTHY_FEED_STATUSES, CityState
 from app.services.feed_manager import FAULT_MODES, FEEDS_BY_ID
 from app.services.pipeline import CityPulse
@@ -29,7 +30,7 @@ def _state(p: CityPulse) -> CityState:
 
 def _zone_or_404(zone_id: str) -> str:
     if zone_id not in ZONE_IDS:
-        raise HTTPException(404, f"Unknown zone {zone_id!r}. Valid zones: {', '.join(ZONE_IDS)}.")
+        raise HTTPException(404, f"Unknown area {zone_id!r}. Areas are grid cells A1–I9.")
     return zone_id
 
 
@@ -62,12 +63,27 @@ def dashboard(p: CityPulse = Depends(get_pipeline)):
 def zones(p: CityPulse = Depends(get_pipeline)):
     by_id = {z.id: z for z in p.state.zones}
     return [
-        {"id": z.id, "number": z.number, "name": z.name, "short_name": z.short_name,
+        {"id": z.id, "number": z.number, "name": z.name, "short_name": z.short_name, "row": z.row, "col": z.col,
          "status": by_id[z.id].status, "status_label": by_id[z.id].status_label,
          "headline": by_id[z.id].headline, "centroid": z.centroid, "anchor": z.label_point,
          "boundary": {"type": "Polygon", "coordinates": [z.geojson_ring()]}}
         for z in ZONES
     ]
+
+
+_ROADS = load_roads()
+
+
+@router.get("/map")
+def city_map():
+    """Static map furniture: the grid and the main roads (clipped per cell) for traffic overlays."""
+    return {
+        "city": "Jaipur",
+        "grid": {"north": grid.GRID_NORTH, "south": grid.GRID_SOUTH, "west": grid.GRID_WEST, "east": grid.GRID_EAST,
+                 "rows": grid.ROWS, "cols": grid.COLS, "col_letters": grid.COL_LETTERS},
+        "roads": _ROADS,
+        "roads_attribution": "Road shapes © OpenStreetMap contributors (ODbL)",
+    }
 
 
 @router.get("/zones/{zone_id}")
@@ -142,13 +158,14 @@ def timeline(p: CityPulse = Depends(get_pipeline)):
 
 class EventRequest(BaseModel):
     event: Literal["heavy_rain", "traffic_spike", "incident_cluster", "poor_air", "flooding", "road_accident"]
-    zone_id: str = Field(pattern=r"^Z[1-5]$")
+    zone_id: str = Field(pattern=r"^[A-I][1-9]$")
     intensity: float = Field(1.0, ge=0.2, le=1.5)
     duration_s: float = Field(600, ge=60, le=3600)
 
 
 class ScenarioRequest(BaseModel):
     name: str = Field("full", max_length=40)
+    instant: bool = True  # show the developed situation now (False = watch it unfold live)
 
 
 class PlaybackRequest(BaseModel):
@@ -157,7 +174,7 @@ class PlaybackRequest(BaseModel):
 
 
 class CustomRequest(BaseModel):
-    zone_id: str = Field(pattern=r"^Z[1-5]$")
+    zone_id: str = Field(pattern=r"^[A-I][1-9]$")
     values: dict[str, float] = Field(default_factory=dict)
     duration_s: float = Field(600, ge=60, le=3600)
 
@@ -200,8 +217,9 @@ def simulation_scenarios(p: CityPulse = Depends(get_pipeline)):
 
 @router.post("/simulation/scenario")
 def simulation_scenario(body: ScenarioRequest, p: CityPulse = Depends(get_pipeline)):
-    name = p.run_scenario(body.name)
-    p.tick()
+    name = p.run_scenario(body.name, instant=body.instant)
+    if body.instant:
+        return {"ok": True, "message": f"{name}: showing the situation now."}
     return {"ok": True, "message": f"Scenario started: {name}. Watch the map — it unfolds over the next minutes."}
 
 

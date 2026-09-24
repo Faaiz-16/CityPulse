@@ -108,12 +108,28 @@ Each normalizer (`normalization/normalizers.py`) does six things per record:
 Timestamps in the future (> 5 min skew) are rejected. For reports, only whitelisted fields
 survive; account IDs and phone numbers are dropped and never stored.
 
-## 5. Zones
+## 5. Areas — Jaipur as a 9 × 9 grid
 
-Five **demonstration zones** drawn over central Delhi as a realistic backdrop
-(`geo/zones.py`). They are *not* official boundaries and the UI says so. Each zone has a
-polygon, a label anchor and five simulated sensors (2 traffic, 1 rain gauge, 1 air monitor,
-1 water-level sensor). A ray-casting point-in-polygon test maps any coordinate to a zone.
+Jaipur is divided into **81 square demonstration areas** of about 2.5 km × 2.5 km
+(`geo/zones.py`). Columns **A–I** run west → east and rows **1–9** north → south, like a paper
+map; the Walled City is **F4**. Each area is named after the best-known locality in it
+("Walled City (F4)", "Mansarovar (C7)"); areas with no well-known locality are "Near …". They are
+*not* official wards and the UI says so.
+
+Every area is analysed on its own: it has five simulated sensors (2 traffic sensors placed **on
+real main roads**, 1 rain gauge, 1 air monitor, 1 water-level sensor), its own baselines and its
+own status. Mapping a coordinate to an area is simple arithmetic on the grid.
+
+Main-road shapes come from **OpenStreetMap** (© OpenStreetMap contributors, ODbL): downloaded
+once, simplified and split at cell edges by `backend/scripts/build_jaipur_roads.py` into
+`geo/jaipur_roads.json` (~90 KB), served at `/api/map`. The map colours each road stretch by its
+area's traffic.
+
+The synthetic city gives each area a character: busier near the Walled City and C-Scheme
+(more traffic and reports), worse air around the VKI and Sitapura industrial areas, cleaner in
+the Nahargarh hills. An event is centred on one cell and reaches its neighbours with decreasing
+strength (Gaussian falloff), so a storm shows up as a realistic **hotspot** — centre red,
+neighbours red or amber — rather than one huge blob.
 
 ## 6. Baselines — "what is normal here, now?"
 
@@ -149,8 +165,9 @@ Why an absolute rule for rain: normal rainfall is ~0, so "+900 %" is meaningless
 
 Why a Poisson test for reports: reports arrive randomly. Seeing 4 when ~2 are expected happens
 all the time. The Poisson tail probability says how likely a count is *by pure chance*; because
-we check 5 zones × 3 report types every 3 seconds, a strict level (0.1 %) avoids false alarms
-from multiple comparisons.
+we check 81 areas × 4 report types every 3 seconds, a strict level (0.1 %) avoids false alarms
+from multiple comparisons (measured: over two simulated rush hours, one area was briefly amber and
+none turned red).
 
 Example from the brief: traffic 147 vs baseline 100 → +47 % ≥ 30 % → **anomaly (moderate)**.
 
@@ -193,9 +210,9 @@ What CityPulse says when there is **no** relationship:
 
 | Insight | Condition | Example headline |
 |---|---|---|
-| **Potential disruption** (high) | ≥ 1 moderate/strong relationship **and** ≥ 2 anomalies of moderate+ severity in the zone | "Elevated traffic disruption risk in Zone 3 — East" |
-| **Early warning** (elevated) — traffic | rain anomalous, congestion ≥ +10 % and **rising**, but below the 30 % threshold | "Traffic may slow in Zone 3 — East" |
-| **Early warning** — water | rain anomalous, water level ≥ half the flag level and rising | "Water may collect on streets in Zone 3 — East" |
+| **Potential disruption** (high) | ≥ 1 moderate/strong relationship **and** ≥ 2 anomalies of moderate+ severity in the zone | "Elevated traffic disruption risk in Walled City (F4)" |
+| **Early warning** (elevated) — traffic | rain anomalous, congestion ≥ +10 % and **rising**, but below the 30 % threshold | "Traffic may slow in Walled City (F4)" |
+| **Early warning** — water | rain anomalous, water level ≥ half the flag level and rising | "Water may collect on streets in Walled City (F4)" |
 
 Early warnings address the brief's pain point "alerts are reactive, not predictive": they fire
 *before* the second signal crosses its threshold, and they say so.
@@ -278,13 +295,20 @@ CHECK FEEDS → CHECK DATA QUALITY → CHECK ANOMALIES → CHECK RELATED SIGNALS
 
 ## 13. Simulation and demo (`app/simulation/`)
 
-- **Scenario presets** (`scenarios.py`): Heavy rainfall (Z3), Flash flood (Z4), Major congestion
-  (Z2), Road accident (Z1), Power outage (Z4), Poor air quality (Z5), Severe storm (Z2) and
-  Multi-event evening (Z3 + an unrelated jam in Z1 that must *not* be linked to rain). Each is a
+- **Scenario presets** (`scenarios.py`), each at a real Jaipur place: Heavy rainfall (Walled City,
+  F4), Flash flood (Mansarovar, C7), Major congestion (C-Scheme, E4), Road accident (Ajmer Road near
+  Heerapura, B6), Power outage (Malviya Nagar, F7), Poor air quality (VKI Industrial Area, D1),
+  Severe storm (Jagatpura, G8) and Multi-event evening (Walled City + an unrelated jam in Vaishali
+  Nagar, C4, that must *not* be linked to rain). Each is a
   timed list of effects plus a **storyline** of beats (e.g. rain begins → traffic builds → water
   rises → reports → possible relationship → possible disruption).
 - Beats are ticked off from the **actual analysis output** (value, deviation, anomaly flag, link
   or status checks), never a timer — the storyline proves what the system detected and when.
+- **Instant start (default).** Choosing a scenario shows the developed situation straight away:
+  the scenario is started ~2 minutes in the past and the pipeline is **fast-forwarded** through
+  that time in 5-second ticks — the same feeds, normalization, analysis and agent as live, just
+  computed at once (~2 s). Storyline beats keep their real detection times ("after 95 s").
+  `instant=False` starts it now to watch it unfold, with pause and 2×/4×.
 - **Scenario clock** (`SimClock` in `city_model.py`): effects are evaluated in scenario time,
   which can **pause** or run at **1×/2×/4×**. Analysis windows stay on the real clock, so at 2×/4×
   the same story unfolds in less real time.
@@ -330,19 +354,20 @@ stored history ─► find the recorded event (first/last heavy-rain reading in 
 
 ```
 App.tsx  (full-bleed map; everything else floats over it)
-├── CityMap ── zone areas (faint / amber / glowing red) · zone labels · rain cells
-│             · congestion corridors · incident clusters (only when unusual) · air haze · IoT sensors
+├── CityMap ── 9 × 9 grid (faint lines; soft amber/red tint only on unusual areas) · A–I / 1–9 refs
+│             · one label per hotspot · rain cells · congestion on real OSM roads
+│             · incident clusters (only when unusual) · air haze · IoT sensors
 ├── Header ── logo · PulseChip (heart: colour = worst zone, speed = bpm) · LIVE/DEMO/REPLAY + clock
 │             · DataHealth (one chip, details on click) · Insights · Replay · Demo
 ├── LayerToggles · PulseLegend (collapsible)
-├── AlertsCard ── at most 4 active alerts (2 on phones); click → zone
+├── AlertsCard ── at most 4 alerts (2 on phones), grouped per hotspot ("Walled City + 4 nearby areas")
 ├── DemoPill ── scenario progress + playback while the Demo drawer is closed
 ├── Left drawers (closed by default)
-│   ├── DemoDrawer ── Scenarios (presets, storyline, pause/speed/reset) · Custom sliders · Feed failures
+│   ├── DemoDrawer ── Situations (one click → shown instantly; step-by-step option) · Custom · Feed failures
 │   └── InsightsDrawer ── SummaryPanel · AlertsList (agent) · PulseTimeline · EventTicker
-├── ZonePanel (right) ── status · what's happening · evidence · possible relationship · for residents
-│             └── "Show the data behind this": metric cards · "Why these flags?" · 15-min chart
-│                 · recent reports · agent trace · data sources
+├── ZonePanel (right) ── simple view: big status · "What you'd notice" (≤ 3 plain phrases) · "What to do"
+│             └── "Explain in detail": what's happening · evidence · possible relationship · residents
+│                 └── "Show the data behind this": metrics · "Why these flags?" · chart · reports · agent
 └── ReplayBar (replay mode) ── play/pause/step/speed · zone × time scrubber · key moments
 ```
 

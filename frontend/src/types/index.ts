@@ -169,6 +169,8 @@ export interface ScenarioPreset {
   name: string;
   tagline: string;
   zone_id: string;
+  place: string;
+  ready_s: number;
   severity: "high" | "moderate" | "low";
   duration_s: number;
   feeds: string[];
@@ -228,9 +230,25 @@ export interface ZoneBoundary {
   number: number;
   name: string;
   short_name: string;
+  row: number;
+  col: number;
   centroid: [number, number];
   anchor: [number, number];
   boundary: { type: "Polygon"; coordinates: number[][][] };
+}
+
+export interface Road {
+  cell: string;
+  kind: "major" | "minor";
+  name: string;
+  path: [number, number][];
+}
+
+export interface MapInfo {
+  city: string;
+  grid: { north: number; south: number; west: number; east: number; rows: number; cols: number; col_letters: string };
+  roads: Road[];
+  roads_attribution: string;
 }
 
 export interface SeriesPoint {

@@ -53,15 +53,17 @@ Built with **React** (a library for building UIs out of reusable components) and
 (JavaScript with types, which catches mistakes early), bundled by **Vite**, styled with
 **Tailwind CSS** (utility classes like `p-3` for padding).
 
-- **Map (the hero):** fills the screen. Normal zones are faint, attention zones amber, possible
-  disruptions glow red. Rain cells, congestion corridors, incident icons (only when unusual), an
+- **Map (the hero):** Jaipur fills the screen, with a 9 × 9 grid of areas (A–I across, 1–9 down).
+  Normal areas are just faint lines; unusual areas get a soft amber or red tint; one label per
+  hotspot. Rain cells, congestion drawn on real roads, incident icons (only when unusual), an
   air-quality haze and optional IoT sensors.
-- **Header:** logo, a beating heart (colour = worst zone, speed = how much is unusual), the mode
+- **Header:** logo, a beating heart (colour = worst area, speed = how much is unusual), the mode
   (LIVE / DEMO / REPLAY) and clock, one data-health chip, and the Insights / Replay / Demo buttons.
-- **Active alerts:** at most four, bottom-right; click one to jump to its zone.
-- **Zone panel:** click a zone — a short story (what's happening, evidence, possible relationship,
-  advice), then "Show the data behind this" for metrics, "Why these flags?", a chart and the
-  agent's reasoning.
+- **Active alerts:** at most four, grouped per hotspot ("Walled City + 4 nearby areas"); click one
+  to jump there.
+- **Area panel:** click an area — first a 10-second answer (status, "What you'd notice", "What to
+  do"); **Explain in detail** shows what's happening, the evidence and the possible relationship,
+  and "Show the data behind this" has the metrics, "Why these flags?", a chart and the agent.
 - **Drawers:** *Demo* (scenario presets with pause/speed, custom sliders, feed failures) and
   *Insights* (summary, agent alerts, status heat-map, live signal stream) — closed by default.
 - **Replay bar:** in replay mode, controls to play back a recorded storm.
@@ -117,7 +119,7 @@ the map keeps working. Details: [DATABASE.md](DATABASE.md).
 | `"temp_f": 86.1` | `temperature_c = 30.1 °C` |
 | `"precip_mm_15min": 2.0` | `rain_mm_h = 8.0 mm/h` |
 | `"speedKph": 22.5, "freeFlowKph": 45` | `congestion_pct = 50 %` |
-| `"R-312,EST,420,24/09/2026 15:07"` (CSV) | Zone 3, `transit_delay_min = 7`, UTC time |
+| `"R-32A,R4C6,420,24/09/2026 15:07"` (CSV) | area F4 (depot code R4C6 → F4), `transit_delay_min = 7`, UTC time |
 | `"epochMs": 1790242200000` | `2026-09-24T09:30:00Z` |
 | Open311 report with `account_id`, `contact_phone` | anonymous report — personal fields dropped |
 
@@ -169,9 +171,9 @@ related, we say "insufficient evidence". Code: `backend/app/analysis/correlation
 ## 14. Possible-impact prediction
 
 - **Early warning:** rain is heavy and traffic is already rising (≥ +10 %) but hasn't hit the
-  30 % threshold → "Traffic may slow in Zone 3". Similar for rising street water.
+  30 % threshold → "Traffic may slow in Walled City (F4)". Similar for rising street water.
 - **Potential disruption:** a moderate/strong relationship **and** two or more serious anomalies
-  → "Elevated traffic disruption risk in Zone 3" + advice for residents.
+  → "Elevated traffic disruption risk in Walled City (F4)" + advice for residents.
 
 Zone colour: **red** for potential disruption, **amber** for any anomaly/link/warning, **green**
 otherwise. Code: `backend/app/analysis/risk.py`.
@@ -200,10 +202,13 @@ Code: `backend/app/agent/monitor.py`.
 
 ## 17. Simulation and replay
 
-- **Demo events:** heavy rain, traffic spike, outage cluster, poor air — in any zone. They change
-  the simulated *city*; CityPulse must detect them like it would real events.
-- **Full scenario:** rain over Zone 3, then an unrelated traffic build-up in Zone 1 (to show we
-  don't blame the rain). Stages tick only when the analysis actually detects them. ~90 s to red.
+- **Demo situations:** eight presets at real Jaipur places (heavy rain over the Walled City, a flash
+  flood in Mansarovar, a crash on Ajmer Road…). They change the simulated *city*; CityPulse must
+  detect them like it would real events. A situation appears **instantly**: the backend starts it
+  ~2 minutes in the past and fast-forwards the real pipeline through that time (~2 s). A
+  "step by step" option shows it building up live instead.
+- **Multi-event evening:** rain over the Walled City plus an unrelated jam in Vaishali Nagar (to
+  show we don't blame the rain). Each storyline step ticks only when the analysis detects it.
 - **Feed faults:** outage, delay, malformed — for any feed.
 - **Historical replay:** yesterday's recorded storm, replayed minute by minute through the same
   engine and agent, labelled "ARCHIVE / not live".
@@ -213,9 +218,12 @@ Code: `backend/app/simulation/`. Script: [DEMO.md](DEMO.md).
 ## 18. The map
 
 **Leaflet** draws the map; the background tiles come from **OpenStreetMap** (free, no key),
-darkened with a CSS filter. Zones are **demonstration zones** over central Delhi — not official
-boundaries (the legend says so). Each zone label shows: name, status word, icons for what's
-unusual, and "⟷ possible link" if one exists. Clicking a zone zooms to it and opens the panel.
+darkened with a CSS filter. Jaipur is split into a **9 × 9 grid** of ~2.5 km demonstration areas
+(A1–I9, named after localities, e.g. Walled City = F4) — not official wards (the legend says so).
+Normal areas are just faint grid lines; unusual areas get a soft amber/red tint. Touching unusual
+areas form one **hotspot** with one label ("Walled City · Possible disruption · 5 areas").
+Congestion is drawn on Jaipur's real main roads (OpenStreetMap). Clicking an area zooms to it and
+opens a simple panel; "Explain in detail" shows the evidence.
 Code: `frontend/src/components/map/`.
 
 ## 19. Error handling
@@ -280,7 +288,7 @@ npm install
 npm run dev
 ```
 
-Open <http://localhost:5173>. Tests: `cd backend && python -m pytest -q` (119 should pass).
+Open <http://localhost:5173>. Tests: `cd backend && python -m pytest -q` (121 should pass).
 Full guide: [SETUP.md](SETUP.md).
 
 ## 24. How to modify common things
@@ -305,10 +313,10 @@ add a headline and resident advice for its `id` to `_DISRUPTION_HEADLINES` and `
    in `components/zone/ZonePanel.tsx`.
 6. Tests in `tests/test_normalization.py`.
 
-**Add a zone** — add a `Zone(...)` in `geo/zones.py`, its character in `ZONE_CHARACTER`
-(`data_sources/city_model.py`), a bus area code and route in `data_sources/traffic.py`, and widen
-the `zone_id` pattern in `api/routes.py` (`^Z[1-5]$`). Delete the database so history is
-regenerated.
+**Change the grid or city** — edit the grid constants and `LOCALITIES` in `geo/zones.py` (areas,
+names, sensors and bus depot codes are derived from them), regenerate the roads with
+`scripts/build_jaipur_roads.py`, and widen the `zone_id` pattern in `api/routes.py`
+(`^[A-I][1-9]$`) if the grid grows. History regenerates automatically when the layout changes.
 
 **Change the look** — colours are CSS variables at the top of `frontend/src/index.css`; map
 colours in `components/map/mapColors.ts`.

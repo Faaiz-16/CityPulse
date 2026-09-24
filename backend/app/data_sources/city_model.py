@@ -3,9 +3,13 @@
 This is the "ground truth" behind every simulated feed. For any zone and time it returns
 what the city *actually* looks like:
 
-    value = daily pattern (rush hours, air-quality peaks)  × zone character
-            + active simulation effects (rain, traffic spike, incident cluster)
+    value = daily pattern (rush hours, air-quality peaks)  × area character
+            + active simulation effects × how strongly they reach this area
             + small deterministic noise
+
+Jaipur is a 9 × 9 grid of areas. Busier areas near the Walled City have more traffic and
+reports; industrial areas have worse air. An event (a storm, a crash…) is centred on one cell
+and reaches its neighbours with decreasing strength, so it shows up as a realistic hotspot.
 
 The feeds then report this ground truth in their own messy vendor formats, which is what
 the normalization layer has to untangle. Because noise is seeded from (seed, zone, metric,
@@ -19,17 +23,31 @@ from datetime import datetime, timedelta
 from typing import ClassVar
 from zoneinfo import ZoneInfo
 
-from app.geo.zones import ZONES_BY_ID, zone_for_point
+from app.geo.zones import CELL_LAT, CELL_LON, ZONES, ZONES_BY_ID, cell_bounds, cell_distance
+
+# The city core (between C-Scheme and the Walled City): traffic and reports peak here.
+_CORE = (3.3, 4.6)  # (row, col) in cells
+# Industrial areas (worse air) and forested hills (cleaner air).
+_AIR_OVERRIDES = {"D1": 1.35, "C1": 1.15, "E1": 1.1, "G9": 1.3, "F9": 1.1, "D8": 1.15, "C8": 1.1,
+                  "E2": 0.85, "F2": 0.85, "E3": 0.9, "F3": 0.9, "G3": 0.9, "G2": 0.9}
 
 
-# How each zone differs from the city average.
-ZONE_CHARACTER: dict[str, dict[str, float]] = {
-    "Z1": {"traffic": 1.25, "air": 1.10, "incidents": 1.2},
-    "Z2": {"traffic": 0.95, "air": 1.00, "incidents": 1.0},
-    "Z3": {"traffic": 1.05, "air": 1.05, "incidents": 1.0},
-    "Z4": {"traffic": 1.00, "air": 0.95, "incidents": 0.9},
-    "Z5": {"traffic": 0.90, "air": 1.15, "incidents": 0.8},
-}
+def _character(zone) -> dict[str, float]:
+    d2 = (zone.row - _CORE[0]) ** 2 + (zone.col - _CORE[1]) ** 2
+    busy = math.exp(-d2 / 10)  # 1 in the core → ~0 at the edge of the grid
+    jitter = random.Random(f"char|{zone.id}")
+    return {
+        "traffic": round((0.72 + 0.58 * busy) * jitter.uniform(0.95, 1.05), 3),
+        "air": round(_AIR_OVERRIDES.get(zone.id, 0.95 + 0.15 * busy) * jitter.uniform(0.97, 1.03), 3),
+        "incidents": round(0.5 + 1.1 * busy, 3),
+    }
+
+
+# How each area differs from the city average.
+ZONE_CHARACTER: dict[str, dict[str, float]] = {z.id: _character(z) for z in ZONES}
+
+# Background reports are spread over 81 small areas, so each area's share is small.
+AREA_REPORT_SHARE = 1 / 12
 
 FREE_FLOW_KMH = 45.0
 
@@ -107,6 +125,25 @@ EFFECT_INCIDENTS: dict[str, dict[str, tuple[float, float]]] = {
 
 EFFECT_KINDS = tuple(EFFECT_IMPACTS)
 
+# How far each kind of event reaches, in cells (Gaussian spread around the centre cell).
+# A storm covers several areas; a crash or a substation failure is local.
+EFFECT_SPREAD: dict[str, float] = {
+    "heavy_rain": 0.8, "flooding": 0.55, "traffic_spike": 0.7, "incident_cluster": 0.6,
+    "poor_air": 1.1, "road_accident": 0.45,
+}
+MIN_REACH = 0.12  # weaker than this and the area is not affected at all
+
+
+def footprint(zone_id: str, spread: float) -> dict[str, float]:
+    """How strongly an event centred on ``zone_id`` reaches every area (1 at the centre)."""
+    out = {}
+    for z in ZONES:
+        d = cell_distance(zone_id, z.id)
+        w = math.exp(-d * d / (2 * spread * spread)) if spread > 0 else float(d == 0)
+        if w >= MIN_REACH:
+            out[z.id] = round(w, 3)
+    return out
+
 
 class SimClock:
     """Scenario time, which can be paused or sped up independently of the wall clock.
@@ -160,6 +197,13 @@ class Effect:
     # Downstream lags are tuned in seconds for a snappy live demo; a recorded real-world
     # event unfolds over minutes, so history effects stretch the lags by this factor.
     lag_scale: float = 1.0
+    spread: float | None = None  # reach in cells; None = the default for this kind of event
+    reach: dict[str, float] = field(default_factory=dict, repr=False)
+
+    def __post_init__(self) -> None:
+        if not self.reach:
+            self.reach = footprint(self.zone_id, EFFECT_SPREAD.get(self.kind, 0.6)
+                                   if self.spread is None else self.spread)
 
     @property
     def end(self) -> datetime:
@@ -197,8 +241,9 @@ class CityModel:
     def rng(self, *keys: object) -> random.Random:
         return random.Random(f"{self.seed}|" + "|".join(str(k) for k in keys))
 
-    def active_effects(self, zone_id: str, t: datetime) -> list[Effect]:
-        return [e for e in self.effects if e.zone_id == zone_id and e.start <= t <= e.end]
+    def active_effects(self, zone_id: str, t: datetime) -> list[tuple[Effect, float]]:
+        """Effects reaching this area at ``t``, with how strongly they reach it (0–1)."""
+        return [(e, e.reach[zone_id]) for e in self.effects if zone_id in e.reach and e.start <= t <= e.end]
 
     # ----------------------------------------------------------- base pattern
     def base_value(self, zone_id: str, metric: str, t: datetime) -> float:
@@ -238,11 +283,11 @@ class CityModel:
         """Ground-truth value of a metric in a zone at time ``t``."""
         v = self.base_value(zone_id, metric, t)
         st = self.clock.now(t)  # effects run on scenario time
-        for eff in self.active_effects(zone_id, st):
+        for eff, weight in self.active_effects(zone_id, st):
             for imp in EFFECT_IMPACTS[eff.kind]:
                 if imp.metric != metric:
                     continue
-                level = eff.envelope(st, imp.lag_s)
+                level = eff.envelope(st, imp.lag_s) * weight
                 v = v + imp.amount * level if imp.op == "add" else v * (1 + imp.amount * level)
 
         sd = self.NOISE_SD.get(metric, 0.0)
@@ -263,14 +308,14 @@ class CityModel:
     # --------------------------------------------------------------- incidents
     def incident_rate(self, zone_id: str, category: str, t: datetime) -> tuple[float, float]:
         """(normal background rate, extra rate caused by active effects), reports per minute."""
-        base = BASE_INCIDENT_RATES.get(category, 0.0) * ZONE_CHARACTER[zone_id]["incidents"]
+        base = BASE_INCIDENT_RATES.get(category, 0.0) * ZONE_CHARACTER[zone_id]["incidents"] * AREA_REPORT_SHARE
         extra = 0.0
         st = self.clock.now(t)
-        for eff in self.active_effects(zone_id, st):
+        for eff, weight in self.active_effects(zone_id, st):
             spec = EFFECT_INCIDENTS.get(eff.kind, {}).get(category)
             if spec:
                 per_min, lag = spec
-                extra += per_min * eff.envelope(st, lag)
+                extra += per_min * eff.envelope(st, lag) * weight
         return base, extra
 
     def incidents_between(self, zone_id: str, t0: datetime, t1: datetime) -> list[dict]:
@@ -299,14 +344,13 @@ class CityModel:
         return sorted(out, key=lambda r: r["ts"])
 
     def random_point(self, zone_id: str, rng: random.Random) -> tuple[float, float]:
+        """A report location inside the area, clustered around its low point (water sensor)."""
         zone = ZONES_BY_ID[zone_id]
-        clat, clon = zone.sensors[4][2], zone.sensors[4][3]  # cluster near the zone's low point
-        for _ in range(12):
-            lat = clat + rng.gauss(0, 0.012)
-            lon = clon + rng.gauss(0, 0.015)
-            if zone_for_point(lat, lon) == zone_id:
-                return round(lat, 5), round(lon, 5)
-        return round(clat, 5), round(clon, 5)
+        clat, clon = zone.sensors[4][2], zone.sensors[4][3]
+        n, s, w, e = cell_bounds(zone.row, zone.col)
+        lat = min(n - 0.001, max(s + 0.001, clat + rng.gauss(0, CELL_LAT / 5)))
+        lon = min(e - 0.001, max(w + 0.001, clon + rng.gauss(0, CELL_LON / 5)))
+        return round(lat, 5), round(lon, 5)
 
 
 def _poisson(lam: float, rng: random.Random) -> int:

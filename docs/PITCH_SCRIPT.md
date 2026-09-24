@@ -10,7 +10,7 @@ Say "possible link" and "may be related" every time; it's our strongest message.
 ---
 
 ## Slide 1 — Title · 15 s
-**Show:** the map with Zone 3 red.
+**Show:** the Jaipur map with the Walled City hotspot red.
 **Say:** "Hi, we're [team]. This is CityPulse. The idea is simple: one glance should tell you
 what's really happening in your city — and why it might matter."
 **Key point:** memorable one-line promise.
@@ -107,7 +107,7 @@ synthetic feeds for real ones — the normalizers, engine, agent and map stay ex
 ## Slide 13 — What we built ✂ · 20 s
 **Show:** the list.
 **Say:** "In 24 hours: five feeds, eight normalizers, the analysis engine, the agent, replay, the
-map-first interface, 119 automated tests and full documentation."
+map-first interface, 121 automated tests and full documentation."
 **Key point:** substance and reliability.
 
 ## Slide 14 — Close · 15 s

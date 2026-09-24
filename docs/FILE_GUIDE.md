@@ -49,10 +49,17 @@ p-value 0.001…), windows (current 60 s, rolling 10 min), feed freshness rules,
 **Used by:** `services/persistence.py`.
 
 ### `app/geo/zones.py`
-**Purpose:** the five demonstration zones, their sensors and point-in-polygon lookup.
-**Important contents:** `ZONES`, `SENSOR_REGISTRY`, `zone_for_point()` (ray casting),
-`label_point` (where each map label sits), `centroid` (used for live API queries).
+**Purpose:** Jaipur as a 9 × 9 grid of 81 demonstration areas (A1–I9), their names, sensors and
+lookups. `jaipur_roads.json` beside it holds the main-road shapes (OpenStreetMap, ODbL) per cell.
+**Important contents:** grid constants, `LOCALITIES` (area names), `ZONES`, `SENSOR_REGISTRY`
+(traffic sensors sit on real roads), `zone_for_point()` (grid arithmetic), `cell_distance()`,
+`load_roads()`.
 **Used by:** data sources, normalizers, engine, API.
+
+### `scripts/build_jaipur_roads.py`
+**Purpose:** one-off builder for `app/geo/jaipur_roads.json`: takes an OpenStreetMap Overpass export
+of Jaipur's main roads, simplifies each road (~8 m), splits it at grid-cell edges and tags each
+piece with its cell. The download command is in the file's docstring.
 
 ### Data sources — `app/data_sources/`
 
@@ -160,7 +167,7 @@ validate input with Pydantic (`EventRequest`, `FaultRequest`); 404/400 with help
 | File | Purpose | Used by |
 |---|---|---|
 | `main.tsx` | Mounts `<App/>` | — |
-| `App.tsx` | Map-first layout: full-bleed map, floating header, legend, alerts, drawers, zone panel; polling; LIVE/DEMO/REPLAY mode; deep links (`?zone=Z3`, `?replay=1&frame=40`, `?demo=1`, `?insights=1`) | `main.tsx` |
+| `App.tsx` | Map-first layout: full-bleed map, floating header, legend, alerts, drawers, zone panel; polling; LIVE/DEMO/REPLAY mode; deep links (`?zone=F4`, `?replay=1&frame=40`, `?demo=1`, `?insights=1`) | `main.tsx` |
 | `index.css` | Design tokens (colours), Tailwind import, map styling, dark basemap filter, animations (with reduced-motion support) | all components |
 | `types/index.ts` | TypeScript mirror of `backend/app/schemas.py` | everything |
 | `services/api.ts` | Typed API client with timeouts and readable error messages | `App`, `ZonePanel`, `DemoDrawer` |
@@ -169,7 +176,8 @@ validate input with Pydantic (`EventRequest`, `FaultRequest`); 404/400 with help
 | `utils/status.ts` | Status / feed / severity / strength colours, words and icons | most components |
 | `utils/format.ts` | Local time, "x s ago", numbers, percentages, units | most components |
 | `utils/alerts.ts` | `deriveAlerts()`: the few alerts worth showing (agent alerts, zone status, feed problems), most severe first | `AlertsCard`, `DemoPill` |
-| `utils/geo.ts` | Point-in-polygon and seeded scatter (stable rain-cell positions) | `CityMap` |
+| `utils/geo.ts` | Seeded scatter inside a cell (stable rain-cell positions) | `CityMap` |
+| `utils/grid.ts` | Grid references, **hotspots** (touching unusual areas grouped into one story), place names | `CityMap`, `alerts.ts` |
 
 ### `src/components/`
 
@@ -187,12 +195,11 @@ validate input with Pydantic (`EventRequest`, `FaultRequest`); 404/400 with help
 | `PulseTimeline.tsx` | Zone × time heat-map of statuses over the last 30 minutes |
 | `ReplayBar.tsx` | Replay controls: play/pause/step/speed, zone × time scrubber, key-moment chips, back to live |
 | `ui/StatusBadge.tsx` | Status pill with colour + icon + word |
-| `map/CityMap.tsx` | Leaflet map: dark OSM tiles, zone areas (red ones glow), rain cells, congestion corridors, incident clusters (only when unusual), air haze, IoT sensors, zone labels, auto-framing of the selected zone |
-| `map/markers.tsx` | Cached Leaflet `divIcon`s: zone labels, incident clusters, air-quality marker |
-| `map/corridors.ts` | Main road corridors per zone (drawn when traffic is unusual) |
+| `map/CityMap.tsx` | Leaflet map of Jaipur: 9 × 9 grid (tint only on unusual areas), A–I/1–9 references, one label per hotspot, rain cells, congestion drawn on real roads, incident clusters (only when unusual), air haze, IoT sensors, framing of the selected area |
+| `map/markers.tsx` | Cached Leaflet `divIcon`s: hotspot labels, grid references, selected-area tag, incident clusters, air-quality marker |
 | `map/MapControls.tsx` | `LayerToggles` and the collapsible `PulseLegend` |
 | `map/mapColors.ts` | Concrete colours for Leaflet SVG (CSS variables don't work there) |
-| `zone/ZonePanel.tsx` | Zone story (status, what's happening, evidence, possible relationship, advice) + "Show the data behind this" (metrics, relationships, chart, reports, agent trace, data sources) |
+| `zone/ZonePanel.tsx` | Area panel: a simple 10-second view (status, "What you'd notice", "What to do") and, behind **Explain in detail**, the full story (what's happening, evidence, possible relationship, advice) + "Show the data behind this" |
 | `zone/MetricCard.tsx` | One signal: current, normal, deviation, severity, trend, sparkline, rule |
 | `zone/InsightCards.tsx` | `RelationshipCard` (strength meter + "Why this flag?") |
 | `zone/SignalChart.tsx` | 15-minute chart: rain bars + traffic / bus / AQI indexed to 100 = normal |

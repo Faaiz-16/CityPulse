@@ -1,8 +1,8 @@
 """Synthetic multi-day history.
 
 Used for two things:
-  * learning baselines ("what does Zone 3 traffic normally look like at 6 p.m.?")
-  * historical replay of a recorded storm (yesterday evening, Zones 3 and 4)
+  * learning baselines ("what does traffic in Raja Park normally look like at 6 p.m.?")
+  * historical replay of a recorded storm (yesterday evening, over the south-centre of Jaipur)
 
 History is sampled every 5 minutes from the same deterministic city model. Around the recorded
 storm it is also archived at **1-minute** resolution (provider ``ARCHIVE_PROVIDER``) so replay has
@@ -40,10 +40,10 @@ def recorded_storm_window(now: datetime, model: CityModel) -> tuple[datetime, da
 def storm_effects(now: datetime, model: CityModel) -> list[Effect]:
     start, _ = recorded_storm_window(now, model)
     return [
-        Effect("heavy_rain", "Z3", start + timedelta(minutes=15), ramp_s=600, hold_s=2400, fade_s=900,
-               label="Recorded storm (Zone 3)", lag_scale=15),
-        Effect("heavy_rain", "Z4", start + timedelta(minutes=30), ramp_s=600, hold_s=1500, fade_s=900,
-               intensity=0.7, label="Recorded storm (Zone 4)", lag_scale=15),
+        Effect("heavy_rain", "E6", start + timedelta(minutes=15), ramp_s=600, hold_s=2400, fade_s=900,
+               label="Recorded storm (Tonk Phatak)", lag_scale=15),
+        Effect("heavy_rain", "F7", start + timedelta(minutes=30), ramp_s=600, hold_s=1500, fade_s=900,
+               intensity=0.7, spread=0.8, label="Recorded storm (Malviya Nagar)", lag_scale=15),
     ]
 
 

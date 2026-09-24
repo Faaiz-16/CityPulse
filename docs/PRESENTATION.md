@@ -14,7 +14,7 @@ red `#f87171`, "possible link" purple `#c084fc`.
 
 **Understand what's happening in your city — at a glance.**
 
-- Visual: full-screen screenshot of the map with Zone 3 red
+- Visual: full-screen screenshot of the Jaipur grid with the Walled City hotspot red
 - Footer: team name · AmiHacks Track B
 
 ## Slide 2 — The problem: civic information is fragmented
@@ -126,7 +126,7 @@ Visual: one messy raw record on the left, the clean normalized record on the rig
 
 - 5 feeds · 8 normalizers · anomaly + correlation + risk engine · monitoring agent · replay
 - Map-first React UI: zone story, Demo drawer with 8 scenarios + custom sliders, Insights, replay
-- 119 automated tests · full documentation
+- 121 automated tests · full documentation
 - Stack: Python, FastAPI, SQLAlchemy/SQLite, React, TypeScript, Tailwind, Leaflet, Recharts
 
 **Next:** real feeds, subscriptions for residents, relationship discovery reviewed by humans,
