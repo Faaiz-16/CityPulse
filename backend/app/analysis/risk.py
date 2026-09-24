@@ -40,7 +40,7 @@ def assess_risks(zone_id: str, zone_name: str, metrics: dict[str, MetricAssessme
     strong_links = [r for r in relationships if r.strength in ("moderate", "strong")]
     serious = [a for a in anomalies if _SEV_RANK[a.severity] >= 2]
     if strong_links and len(serious) >= 2:
-        lead = max(strong_links, key=lambda r: r.score)
+        lead = strong_links[0]  # rules are listed in priority order; keeps the headline stable
         evidence = [a.description for a in serious]
         evidence.append(f"Possible relationship: {lead.title.lower()} ({lead.strength}, score {lead.score:.2f})")
         risks.append(RiskInsight(

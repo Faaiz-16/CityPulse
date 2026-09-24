@@ -63,7 +63,7 @@ def zones(p: CityPulse = Depends(get_pipeline)):
     return [
         {"id": z.id, "number": z.number, "name": z.name, "short_name": z.short_name,
          "status": by_id[z.id].status, "status_label": by_id[z.id].status_label,
-         "headline": by_id[z.id].headline, "centroid": z.centroid,
+         "headline": by_id[z.id].headline, "centroid": z.centroid, "anchor": z.label_point,
          "boundary": {"type": "Polygon", "coordinates": [z.geojson_ring()]}}
         for z in ZONES
     ]

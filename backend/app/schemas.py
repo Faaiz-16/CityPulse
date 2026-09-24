@@ -186,7 +186,7 @@ class ZoneState(BaseModel):
     cannot_assess: list[str]
     incident_counts: dict[str, int]
     recent_incidents: list[IncidentView]
-    centroid: tuple[float, float]
+    anchor: tuple[float, float]  # map point for the zone label and rain overlay
 
 
 class FeedHealth(BaseModel):

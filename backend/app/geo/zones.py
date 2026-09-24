@@ -22,6 +22,8 @@ class Zone:
     name: str
     short_name: str
     polygon: tuple[tuple[float, float], ...]
+    # Where the map label sits (chosen by hand so labels don't overlap neighbouring zones)
+    label_point: tuple[float, float] = (0.0, 0.0)
     # Sensors placed inside the zone for the IoT layer: (sensor_id, kind, lat, lon)
     sensors: tuple[tuple[str, str, float, float], ...] = field(default=())
 
@@ -49,32 +51,32 @@ def _sensors(prefix: str, lat: float, lon: float) -> tuple[tuple[str, str, float
 
 ZONES: tuple[Zone, ...] = (
     Zone(
-        id="Z1", number=1, name="Zone 1 — Central", short_name="Central",
+        id="Z1", label_point=(28.618, 77.210), number=1, name="Zone 1 — Central", short_name="Central",
         polygon=((_IN_N, _IN_W), (_IN_N + 0.003, 77.210), (_IN_N, _IN_E),
                  (28.615, _IN_E + 0.004), (_IN_S, _IN_E), (_IN_S - 0.003, 77.212),
                  (_IN_S, _IN_W), (28.616, _IN_W - 0.004)),
         sensors=_sensors("C", 28.615, 77.210),
     ),
     Zone(
-        id="Z2", number=2, name="Zone 2 — North", short_name="North",
+        id="Z2", label_point=(28.690, 77.210), number=2, name="Zone 2 — North", short_name="North",
         polygon=((_OUT_N, _OUT_W), (_OUT_N + 0.008, 77.210), (_OUT_N, _OUT_E),
                  (_IN_N, _IN_E), (_IN_N + 0.003, 77.210), (_IN_N, _IN_W)),
         sensors=_sensors("N", 28.685, 77.205),
     ),
     Zone(
-        id="Z3", number=3, name="Zone 3 — East", short_name="East",
+        id="Z3", label_point=(28.628, 77.305), number=3, name="Zone 3 — East", short_name="East",
         polygon=((_OUT_N, _OUT_E), (28.615, _OUT_E + 0.010), (_OUT_S, _OUT_E),
                  (_IN_S, _IN_E), (28.615, _IN_E + 0.004), (_IN_N, _IN_E)),
         sensors=_sensors("E", 28.612, 77.292),
     ),
     Zone(
-        id="Z4", number=4, name="Zone 4 — South", short_name="South",
+        id="Z4", label_point=(28.540, 77.210), number=4, name="Zone 4 — South", short_name="South",
         polygon=((_IN_S, _IN_W), (_IN_S - 0.003, 77.212), (_IN_S, _IN_E),
                  (_OUT_S, _OUT_E), (_OUT_S - 0.008, 77.210), (_OUT_S, _OUT_W)),
         sensors=_sensors("S", 28.545, 77.212),
     ),
     Zone(
-        id="Z5", number=5, name="Zone 5 — West", short_name="West",
+        id="Z5", label_point=(28.628, 77.112), number=5, name="Zone 5 — West", short_name="West",
         polygon=((_OUT_N, _OUT_W), (_IN_N, _IN_W), (28.616, _IN_W - 0.004),
                  (_IN_S, _IN_W), (_OUT_S, _OUT_W), (28.615, _OUT_W - 0.010)),
         sensors=_sensors("W", 28.617, 77.125),

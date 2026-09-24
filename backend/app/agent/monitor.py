@@ -83,7 +83,7 @@ class MonitoringAgent:
                              f"{len(links)} possible link(s) in the rolling window → {z.status.value}")
             for risk in z.risks:
                 if risk.kind == "potential_disruption":
-                    lead = max(links, key=lambda r: r.score) if links else None
+                    lead = links[0] if links else None  # same priority order as the risk headline
                     candidates.append(Candidate(
                         key=f"{z.id}:disruption", zone_id=z.id, level="critical", kind="potential_disruption",
                         title=f"Potential civic disruption detected in {z.name}",

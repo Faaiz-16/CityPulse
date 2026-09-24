@@ -54,7 +54,9 @@ def zone_explanation(z: ZoneState) -> SummarySection:
 
     strong = [r for r in z.relationships if r.strength != "weak"]
     if strong:
-        connection = " ".join(r.statement for r in strong[:2]) + " This is not a confirmed cause."
+        signals = list(dict.fromkeys(label for r in strong for label in _signal_names(r.signals)))
+        connection = (f"{_join(signals).capitalize()} are occurring in the same zone and time window, "
+                      f"so these signals may be related. This is a possible link, not a confirmed cause.")
     elif z.insufficient_evidence:
         connection = z.insufficient_evidence[0]
     elif z.relationships:
@@ -101,6 +103,21 @@ def city_summary(zones: list[ZoneState], degraded_feeds: list[str]) -> tuple[str
             f" Note: {_join(degraded_feeds)} data {'is' if len(degraded_feeds) == 1 else 'are'} not fully "
             f"available, so some links cannot be checked.")
     return headline, sections
+
+
+_SIGNAL_NAMES = {
+    "rain_mm_h": "heavy rain",
+    "congestion_pct": "heavier traffic",
+    "transit_delay_min": "bus delays",
+    "waterlogging_reports": "waterlogging reports",
+    "water_level_cm": "standing water",
+    "outage_signal_reports": "power and signal outage reports",
+    "aqi": "worse air quality",
+}
+
+
+def _signal_names(metrics: list[str]) -> list[str]:
+    return [_SIGNAL_NAMES[m] for m in metrics if m in _SIGNAL_NAMES]
 
 
 def _join(items: list[str]) -> str:

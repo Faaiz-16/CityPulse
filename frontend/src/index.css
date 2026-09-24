@@ -1,0 +1,141 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------ tokens
+   A dark "civic operations" palette tuned for projectors: high-contrast text,
+   status colours that stay distinguishable for common colour-vision deficiencies
+   (and are always paired with words + icons). */
+:root {
+  --bg: #0a0f15;
+  --panel: #111821;
+  --panel-2: #16202b;
+  --line: #233040;
+  --line-soft: #1a2430;
+  --text: #e8eef5;
+  --muted: #93a1b2;
+  --faint: #64748b;
+
+  --ok: #34d399;
+  --ok-soft: rgba(52, 211, 153, 0.14);
+  --warn: #fbbf24;
+  --warn-strong: #f59e0b;
+  --warn-soft: rgba(251, 191, 36, 0.14);
+  --bad: #f87171;
+  --bad-soft: rgba(248, 113, 113, 0.16);
+  --sim: #7dd3fc;
+  --rain: #60a5fa;
+  --link: #c084fc;
+  --pulse: #2dd4bf;
+
+  color-scheme: dark;
+}
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Visible keyboard focus everywhere */
+:focus-visible {
+  outline: 2px solid var(--pulse);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.panel {
+  background: color-mix(in srgb, var(--panel) 94%, transparent);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  backdrop-filter: blur(10px);
+}
+
+.label-caps {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+/* ------------------------------------------------------------------ map */
+.leaflet-container {
+  background: #0d141c;
+  font-family: var(--font-sans);
+}
+/* Turn the standard (light) OpenStreetMap tiles into a calm dark basemap so the
+   status colours stay the brightest thing on screen. */
+.leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.72) contrast(0.92) saturate(0.35);
+}
+.leaflet-control-attribution {
+  background: rgba(10, 15, 21, 0.75) !important;
+  color: var(--faint) !important;
+  font-size: 10px;
+}
+.leaflet-control-attribution a {
+  color: var(--muted) !important;
+}
+.leaflet-control-zoom a {
+  background: var(--panel) !important;
+  color: var(--text) !important;
+  border-color: var(--line) !important;
+}
+.leaflet-tooltip.cp-tooltip {
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  font-size: 12px;
+  padding: 6px 8px;
+}
+.leaflet-tooltip.cp-tooltip::before {
+  display: none;
+}
+.zone-label {
+  background: none;
+  border: none;
+}
+
+/* Red zones pulse gently: the animation tells you where to look first. */
+@keyframes cp-ring {
+  0% { transform: scale(0.6); opacity: 0.7; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+.cp-ring {
+  animation: cp-ring 1.8s ease-out infinite;
+}
+
+@keyframes cp-fade-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+.cp-fade-in {
+  animation: cp-fade-in 0.35s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cp-ring,
+  .cp-fade-in,
+  .cp-pulse-line {
+    animation: none !important;
+  }
+}

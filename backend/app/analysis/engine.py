@@ -159,7 +159,7 @@ class AnalysisEngine:
                              timestamp=i.timestamp, lat=i.lat, lon=i.lon, data_status=i.data_status.value)
                 for i in reversed(window_incidents[-25:])
             ],
-            centroid=zone.centroid,
+            anchor=zone.label_point,
         )
 
     @staticmethod
