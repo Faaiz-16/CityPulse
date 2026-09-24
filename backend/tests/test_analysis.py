@@ -187,3 +187,9 @@ def test_early_warning_before_traffic_crosses_threshold():
 
 def test_normal_zone_is_green():
     assert zone_status([], [], []) == ZoneStatus.GREEN
+
+
+def test_small_report_baselines_are_described_without_huge_percentages():
+    from app.analysis.metrics import usual_reports
+    assert usual_reports(0.2, 2500) == "normally fewer than 1"
+    assert usual_reports(2.2, 355.0) == "normally about 2.2, +355%"

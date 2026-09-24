@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from app.analysis.metrics import METRICS, verb_for
+from app.analysis.metrics import METRICS, usual_reports, verb_for
 from app.config import Settings
 from app.schemas import MetricAssessment, Relationship, Strength
 
@@ -89,8 +89,7 @@ def describe(m: MetricAssessment) -> str:
     if METRICS[m.metric].mode == "absolute":  # % change from ~0 is meaningless; show the rule
         return f"{m.label}: {cur} (anomaly rule: {m.threshold})"
     if m.source == "incidents":
-        return (f"{m.label}: {m.current:g} in the window "
-                f"(normally about {m.baseline:g}, {m.deviation_pct:+.0f}%)")
+        return f"{m.label}: {m.current:g} in the window ({usual_reports(m.baseline, m.deviation_pct)})"
     if m.deviation_pct is None:
         return f"{m.label}: {cur}"
     return f"{m.label}: {cur} (normal {m.baseline:g}{unit}, {m.deviation_pct:+.0f}%)"

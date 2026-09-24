@@ -17,14 +17,20 @@ import { clockTime } from "./utils/format";
 
 const POLL_MS = 3000;
 
+// Deep links: ?zone=Z3 opens a zone; ?replay=1&frame=30 opens the replay at a recorded minute.
+const params = new URLSearchParams(window.location.search);
+const INITIAL_ZONE = /^Z[1-9]$/.test(params.get("zone") ?? "") ? params.get("zone") : null;
+const INITIAL_REPLAY = params.get("replay") === "1";
+const INITIAL_FRAME = Number(params.get("frame") ?? 0) || 0;
+
 export default function App() {
   const dashboard = usePolling(api.dashboard, POLL_MS);
   const boundaries = usePolling(api.zones, 60000);
   const timeline = usePolling(api.timeline, 15000);
   const [layers, setLayers] = useState<MapLayers>({ rain: true, reports: true, sensors: false });
-  const replay = useReplay();
+  const replay = useReplay(INITIAL_REPLAY ? INITIAL_FRAME : null);
   const sensors = usePolling(layers.sensors && !replay.active ? api.sensors : null, 5000);
-  const [selectedZone, setSelectedZone] = useState<string | null>(null);
+  const [selectedZone, setSelectedZone] = useState<string | null>(INITIAL_ZONE);
   const [demoOpen, setDemoOpen] = useState(false);
   const wallNow = useNow();
 
@@ -36,7 +42,7 @@ export default function App() {
   const { start: startReplayRaw } = replay;
   const startReplay = useCallback(() => {
     setDemoOpen(false);
-    startReplayRaw();
+    startReplayRaw(0, true);
   }, [startReplayRaw]);
 
   // In replay mode every panel reads the recorded frame instead of the live state.

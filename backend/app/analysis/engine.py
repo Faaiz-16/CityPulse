@@ -26,6 +26,7 @@ from app.analysis.metrics import (
     DERIVED_INCIDENT_METRICS,
     INCIDENT_CATEGORIES,
     METRICS,
+    usual_reports,
     verb_for,
 )
 from app.analysis.risk import STATUS_LABELS, assess_risks, zone_status
@@ -66,8 +67,7 @@ def describe_anomaly(m: MetricAssessment) -> str:
     if m.metric == "water_level_cm":
         return f"Street water-level sensor reads {m.current:g} cm."
     if METRICS[m.metric].source.value == "incidents":
-        return (f"{m.current:g} {m.label.lower()} in the last window, "
-                f"vs about {m.baseline:g} normally ({m.deviation_pct:+.0f}%).")
+        return f"{m.current:g} {m.label.lower()} in the last window ({usual_reports(m.baseline, m.deviation_pct)})."
     unit = "%" if m.unit == "%" else f" {m.unit}"
     return (f"{m.label} {verb_for(m.label)} {m.current:g}{unit}, {m.deviation_pct:+.0f}% compared with the usual "
             f"{m.baseline:g}{unit} for this time of day.")

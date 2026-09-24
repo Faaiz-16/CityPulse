@@ -11,7 +11,7 @@ export interface ReplayControls {
   playing: boolean;
   speed: number; // frames (recorded minutes) per second
   state: CityState | null;
-  start: () => void;
+  start: (at?: number, autoplay?: boolean) => void;
   exit: () => void;
   setIndex: (i: number) => void;
   setPlaying: (p: boolean) => void;
@@ -22,7 +22,7 @@ export interface ReplayControls {
  * Historical replay playhead. The server computes every frame once; the browser owns the
  * playhead and asks for frame i, caching frames so scrubbing back and forth is instant.
  */
-export function useReplay(): ReplayControls {
+export function useReplay(autoStartAt: number | null = null): ReplayControls {
   const [meta, setMeta] = useState<ReplayMeta | null>(null);
   const [active, setActive] = useState(false);
   const [preparing, setPreparing] = useState(false);
@@ -36,15 +36,15 @@ export function useReplay(): ReplayControls {
   const last = meta ? meta.frames.length - 1 : 0;
   const setIndex = useCallback((i: number) => setIndexRaw(Math.max(0, Math.min(i, last))), [last]);
 
-  const start = useCallback(async () => {
+  const start = useCallback(async (at = 0, autoplay = true) => {
     setActive(true);
     setError(null);
     setPreparing(true);
     try {
       const m = meta ?? (await api.replayMeta());
       setMeta(m);
-      setIndexRaw(0);
-      setPlaying(true);
+      setIndexRaw(Math.max(0, Math.min(at, m.frames.length - 1)));
+      setPlaying(autoplay);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Replay unavailable");
       setActive(false);
@@ -58,6 +58,14 @@ export function useReplay(): ReplayControls {
     setPlaying(false);
     setState(null);
   }, []);
+
+  // Deep link (?replay=1&frame=N): open paused at that frame.
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (autoStartAt === null || autoStarted.current) return;
+    autoStarted.current = true;
+    start(autoStartAt, false);
+  }, [autoStartAt, start]);
 
   // Load the current frame (and prefetch the next few).
   useEffect(() => {

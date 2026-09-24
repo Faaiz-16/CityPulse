@@ -4,7 +4,7 @@ Always generated first, instantly, from the structured facts. This is what the u
 whenever the AI layer is disabled, slow, failing or produces something the validator rejects.
 """
 
-from app.analysis.metrics import verb_for
+from app.analysis.metrics import usual_reports, verb_for
 from app.schemas import SummarySection, ZoneState, ZoneStatus
 
 _STATUS_RANK = {ZoneStatus.RED: 0, ZoneStatus.YELLOW: 1, ZoneStatus.GREEN: 2}
@@ -18,14 +18,15 @@ def _lower_first(text: str) -> str:
     return text[:1].lower() + text[1:]
 
 
-def anomaly_phrase(metric: str, current: float | None, deviation: float | None, label: str) -> str:
+def anomaly_phrase(metric: str, current: float | None, deviation: float | None, label: str,
+                   baseline: float | None = None) -> str:
     label = _lower_first(label)
     if metric == "rain_mm_h":
         return f"rainfall is heavy at {_fmt_num(current)} mm/h"
     if metric == "water_level_cm":
         return f"street water-level sensors read {_fmt_num(current)} cm"
     if metric in ("waterlogging_reports", "outage_signal_reports", "incident_reports"):
-        return f"{label} are up ({_fmt_num(current)} in the last window, {deviation:+.0f}%)"
+        return f"{label} are up ({_fmt_num(current)} in the last window, {usual_reports(baseline, deviation)})"
     verb = verb_for(label)
     if deviation is not None:
         return f"{label} {verb} {deviation:.0f}% above normal"
@@ -43,7 +44,7 @@ def zone_explanation(z: ZoneState) -> SummarySection:
                                  else "No relationships detected because nothing is unusual."),
         )
 
-    phrases = [anomaly_phrase(a.metric, a.current, a.deviation_pct, a.label) for a in z.anomalies[:4]]
+    phrases = [anomaly_phrase(a.metric, a.current, a.deviation_pct, a.label, a.baseline) for a in z.anomalies[:4]]
     happening = f"In {z.name}, " + _join(phrases) + "."
 
     if z.risks:

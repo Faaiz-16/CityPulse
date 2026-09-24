@@ -50,6 +50,14 @@ def verb_for(label: str) -> str:
     return "are" if label.split(" (")[0].endswith("s") else "is"
 
 
+def usual_reports(baseline: float | None, deviation_pct: float | None) -> str:
+    """How we describe the normal report count. Below one report per window a percentage is
+    meaningless (and huge), so we say "fewer than 1" instead."""
+    if baseline is None or baseline < 1:
+        return "normally fewer than 1"
+    return f"normally about {baseline:g}, {deviation_pct:+.0f}%"
+
+
 CONTINUOUS_METRICS = tuple(k for k, m in METRICS.items() if m.source != SourceType.INCIDENTS)
 
 INCIDENT_CATEGORIES: dict[str, dict[str, str]] = {
