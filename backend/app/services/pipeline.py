@@ -43,7 +43,8 @@ class CityPulse:
                  persistence: Persistence | None = None) -> None:
         self.s = settings or get_settings()
         self.model = CityModel(seed=self.s.random_seed, tz=self.s.tz)
-        self.store = ReadingStore()
+        # 3 h retention: live air quality is hourly, and its window is 2.5 × that cadence.
+        self.store = ReadingStore(retention=timedelta(hours=3))
         self.feeds = FeedManager(self.s, self.model, http_client)
         self.baselines = BaselineModel(self.s.tz)
         self.engine = AnalysisEngine(self.s, self.baselines)
@@ -110,6 +111,8 @@ class CityPulse:
     def _tick(self, now: datetime) -> CityState:
         for line in self.sim.advance(now):
             self._ticker(now, None, "simulation", line)
+        # Forget finished events; live APIs pause only while a simulated event is active.
+        self.model.effects[:] = [e for e in self.model.effects if e.end >= now]
         self.feeds.live_paused = bool(self.model.effects)
 
         result, _ = self.feeds.poll(now)

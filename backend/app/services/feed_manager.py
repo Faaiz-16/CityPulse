@@ -50,6 +50,9 @@ class FeedSpec:
     interval_s: float
     synthetic: Callable[[CityModel, datetime, datetime, bool, norm.Context], norm.NormalizationResult]
     live: Callable[[httpx.Client, float, norm.Context], norm.NormalizationResult] | None = None
+    # How often the live upstream publishes a new value (Open-Meteo: weather every 15 min,
+    # air quality hourly). A live value stays "current" for this long, whatever our poll rate.
+    live_cadence_s: float = 0.0
 
 
 @dataclass
@@ -99,10 +102,10 @@ def _sensors_synthetic(model, since, now, bad, ctx):
 
 
 FEEDS: tuple[FeedSpec, ...] = (
-    FeedSpec("weather", "Weather", SourceType.WEATHER, 10, _weather_synthetic, _weather_live),
+    FeedSpec("weather", "Weather", SourceType.WEATHER, 10, _weather_synthetic, _weather_live, 900),
     FeedSpec("traffic", "Traffic & transit", SourceType.TRAFFIC, 5, _traffic_synthetic),
     FeedSpec("incidents", "Civic reports (311)", SourceType.INCIDENTS, 5, _incidents_synthetic),
-    FeedSpec("air_quality", "Air quality", SourceType.AIR_QUALITY, 20, _aq_synthetic, _aq_live),
+    FeedSpec("air_quality", "Air quality", SourceType.AIR_QUALITY, 20, _aq_synthetic, _aq_live, 3600),
     FeedSpec("iot_sensors", "Water-level sensors", SourceType.IOT_SENSORS, 10, _sensors_synthetic),
 )
 FEEDS_BY_ID = {f.id: f for f in FEEDS}
@@ -125,7 +128,9 @@ class FeedManager:
         return float(self.s.live_refresh_seconds) if self.uses_live(spec) else spec.interval_s
 
     def intervals(self) -> dict[str, float]:
-        return {f.id: self.interval(f) for f in FEEDS}
+        """How often each feed produces a *new data point* — sets the analysis windows."""
+        return {f.id: max(self.interval(f), f.live_cadence_s) if self.uses_live(f) else self.interval(f)
+                for f in FEEDS}
 
     def set_fault(self, feed_id: str, mode: str) -> None:
         if feed_id not in self.state:

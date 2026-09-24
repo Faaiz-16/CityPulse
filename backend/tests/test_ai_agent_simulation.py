@@ -185,3 +185,12 @@ def test_simulation_is_deterministic(settings):
         return z3.metrics["congestion_pct"].current, sorted(i.id for i in z3.recent_incidents)
 
     assert run_once() == run_once()
+
+
+def test_finished_events_are_forgotten_and_live_apis_resume(pipeline):
+    pipeline.trigger_event("traffic_spike", "Z1", duration_s=60, now=T0)
+    pipeline.tick(T0 + timedelta(seconds=3))
+    assert pipeline.feeds.live_paused
+    end = pipeline.model.effects[0].end
+    pipeline.tick(end + timedelta(seconds=3))
+    assert pipeline.model.effects == [] and not pipeline.feeds.live_paused

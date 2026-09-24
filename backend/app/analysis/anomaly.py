@@ -156,9 +156,14 @@ def assess_continuous(
         elif not live and dev is not None and dev >= s.aqi_threshold_pct:
             is_anomaly, severity = True, relative_severity(dev, s.aqi_threshold_pct)
 
+    if m.key == "aqi" and points[-1].data_status == "live":
+        # The AQI baseline was learned from synthetic history, so it isn't a fair "normal" for
+        # real measurements: report only the absolute health threshold, no baseline or % change.
+        base, dev, z = None, None, None
+
     return MetricAssessment(
         metric=m.key, label=m.label, unit=m.unit, source=m.source.value,
-        current=round(current, 1), baseline=round(base, 1),
+        current=round(current, 1), baseline=round(base, 1) if base is not None else None,
         deviation_pct=round(dev, 1) if dev is not None else None,
         robust_z=round(z, 1) if z is not None else None,
         threshold=threshold_text(m, s), is_anomaly=is_anomaly, severity=severity,

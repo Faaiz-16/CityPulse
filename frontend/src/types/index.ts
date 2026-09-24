@@ -224,7 +224,7 @@ export interface ZoneDetail {
   explanation: SummarySection | null;
   explanation_by: "template" | "ai";
   series: Record<string, SeriesPoint[]>;
-  baselines: Record<string, number>;
+  baselines: Record<string, number | null>;
   reports_per_minute: { minute: string; count: number }[];
   sensors: Sensor[];
   alerts: Alert[];

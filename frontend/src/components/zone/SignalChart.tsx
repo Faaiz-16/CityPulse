@@ -4,7 +4,7 @@ import { clockTime } from "../../utils/format";
 
 interface Props {
   series: Record<string, SeriesPoint[]>;
-  baselines: Record<string, number>;
+  baselines: Record<string, number | null>;
 }
 
 const LINES = [

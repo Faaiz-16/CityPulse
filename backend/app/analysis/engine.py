@@ -66,6 +66,8 @@ def describe_anomaly(m: MetricAssessment) -> str:
         return f"Rainfall is {m.current:g} mm/h — heavy rain."
     if m.metric == "water_level_cm":
         return f"Street water-level sensor reads {m.current:g} cm."
+    if m.metric == "aqi" and m.deviation_pct is None:
+        return f"Air quality index is {m.current:g} — at or above the unhealthy threshold."
     if METRICS[m.metric].source.value == "incidents":
         return f"{m.current:g} {m.label.lower()} in the last window ({usual_reports(m.baseline, m.deviation_pct)})."
     unit = "%" if m.unit == "%" else f" {m.unit}"

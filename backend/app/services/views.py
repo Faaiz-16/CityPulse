@@ -42,7 +42,9 @@ def zone_detail(store: ReadingStore, baselines: BaselineModel, zone: ZoneState, 
         "explanation": explanation,
         "explanation_by": explanation_by,
         "series": series,
-        "baselines": {k: baselines.continuous(zone.id, k, now).median for k in series},
+        # Use the zone's own assessed baseline: it is None where no fair "normal" exists (live AQI).
+        "baselines": {k: zone.metrics[k].baseline if k in zone.metrics else baselines.continuous(zone.id, k, now).median
+                      for k in series},
         "reports_per_minute": [{"minute": k, "count": v} for k, v in sorted(per_minute.items())],
         "sensors": sensors,
         "alerts": [a for a in alerts if a.zone_id == zone.id],

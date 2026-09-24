@@ -7,11 +7,13 @@ import asyncio
 import contextlib
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
 from app.services.pipeline import CityPulse
@@ -61,6 +63,14 @@ def create_app() -> FastAPI:
 
     from app.api.routes import router
     app.include_router(router)
+
+    # Single-server mode: if the frontend has been built (npm run build), serve it too, so the
+    # whole app runs from one command on one port. API routes are registered first and win.
+    default_dist = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+    dist = Path(settings.frontend_dist) if settings.frontend_dist else default_dist
+    if (dist / "index.html").exists():
+        app.mount("/", StaticFiles(directory=dist, html=True), name="frontend")
+        log.info("serving the built frontend from %s", dist)
 
     @app.exception_handler(SimulationError)
     async def simulation_error(_: Request, exc: SimulationError):

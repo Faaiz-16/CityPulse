@@ -172,3 +172,13 @@ def test_database_outage_keeps_live_pulse_running(settings):
     assert p.state is not None and len(p.state.zones) == 5
     assert p.state.config["baseline_history_days"] == 0  # fell back to default baselines
     assert next(z for z in p.state.zones if z.id == "Z3").metrics["rain_mm_h"].is_anomaly
+
+
+def test_live_hourly_air_quality_stays_current_for_its_cadence():
+    # Open-Meteo publishes air quality hourly; a 40-minute-old value is still the current one.
+    s = Settings(run_background_loop=False, live_apis=True)
+    fm = FeedManager(s, CityModel(seed=1, tz=s.tz), httpx.Client(transport=httpx.MockTransport(
+        lambda r: httpx.Response(500))))
+    intervals = fm.intervals()
+    assert intervals["air_quality"] == 3600 and intervals["weather"] == 900
+    assert intervals["traffic"] == 5  # simulated feeds unchanged

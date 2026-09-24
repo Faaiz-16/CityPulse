@@ -193,3 +193,11 @@ def test_small_report_baselines_are_described_without_huge_percentages():
     from app.analysis.metrics import usual_reports
     assert usual_reports(0.2, 2500) == "normally fewer than 1"
     assert usual_reports(2.2, 355.0) == "normally about 2.2, +355%"
+
+
+def test_live_aqi_uses_only_the_health_threshold_not_a_synthetic_baseline():
+    live = [Point(NOW - timedelta(seconds=30), 169, "live", None)]
+    m = assess_continuous(METRICS["aqi"], live, live, Baseline(84, 5, 50, "history"), S)
+    assert m.is_anomaly and m.baseline is None and m.deviation_pct is None
+    from app.analysis.engine import describe_anomaly
+    assert "unhealthy threshold" in describe_anomaly(m)

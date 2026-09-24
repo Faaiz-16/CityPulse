@@ -23,6 +23,8 @@ def anomaly_phrase(metric: str, current: float | None, deviation: float | None, 
     label = _lower_first(label)
     if metric == "rain_mm_h":
         return f"rainfall is heavy at {_fmt_num(current)} mm/h"
+    if metric == "aqi" and deviation is None:
+        return f"air quality is unhealthy (AQI {_fmt_num(current)})"
     if metric == "water_level_cm":
         return f"street water-level sensors read {_fmt_num(current)} cm"
     if metric in ("waterlogging_reports", "outage_signal_reports", "incident_reports"):

@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
     tick_seconds: float = 3.0
     run_background_loop: bool = True  # tests switch this off and drive ticks manually
+    frontend_dist: str = ""  # built frontend to serve; empty = ../frontend/dist if it exists
 
     # --- Demo city ---
     city_name: str = "Demo City"
