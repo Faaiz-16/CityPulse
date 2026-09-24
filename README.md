@@ -55,24 +55,29 @@ Full details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Key features
 
-- **Map-first, 10-second read.** Five demo zones, one status word each, issue icons (rain,
-  traffic, buses, flooding, reports, air), a one-line city headline.
-- **City pulse.** A heartbeat strip whose colour is the worst zone status and whose rhythm
-  speeds up with the number of anomalies; plus a zone × time heat-map timeline and a live signal
-  stream.
-- **Investigation panel.** For any zone: current vs normal for every signal, % deviation,
-  severity, trend, sparkline, a 15-minute chart indexed to "normal", recent reports, and every
-  possible relationship with a **"Why this flag?"** evidence list.
+- **Map-first, 10-second read.** The default screen is the map, a slim header and a handful of
+  alerts. Normal zones are faint; zones needing attention turn amber; a possible disruption
+  becomes a highlighted red area with a two-line label. Everything else is one click away.
+- **Visual language.** Glowing rain cells, red/orange congestion corridors, clustered incident
+  icons (⚡ outages, 🚗 accidents, 💧 waterlogging) that appear only when that report type is
+  unusual, a purple haze for poor air, optional IoT sensor points.
+- **City pulse.** A heart in the header beats at the city's pulse: colour = worst zone, speed =
+  how much is unusual.
+- **Zone story.** Click a zone or alert: status, what's happening, measured evidence, the possible
+  relationship (never a cause) and advice for residents — then "Show the data behind this" for
+  metrics vs normal, "Why these flags?", a 15-minute chart and the agent's reasoning.
 - **Honest correlation.** Only logically related signals, same zone, same rolling window,
   timing that fits. Strength scored and shown. Weak evidence is labelled *insufficient*.
 - **Early warnings.** "Traffic may slow in Zone 3" fires when rain is heavy and traffic is
   climbing — *before* it crosses its threshold.
-- **Feed health.** LIVE · SIMULATED · FALLBACK · DELAYED · STALE · UNAVAILABLE, with age and
-  rejected-record counts.
+- **Demo drawer.** Eight realistic scenario presets (heavy rain, flash flood, congestion,
+  accident, power outage, poor air, severe storm, multi-event) that unfold over time with
+  pause and 1×/2×/4×; a live storyline ticks each beat only when the analysis detects it.
+  Custom sliders and feed-failure injection too.
 - **Historical replay.** Scrub through a recorded storm minute by minute; the same engine and
   agent detect it on past data, with key moments you can jump to. Clearly labelled as recorded.
-- **Demo controls.** One-click full scenario, individual events per zone, and fault injection
-  (outage / delay / malformed) per feed.
+- **Feed health.** LIVE · SIMULATED · FALLBACK · DELAYED · STALE · UNAVAILABLE in one header chip,
+  never hidden and never shown as a raw error.
 
 ## Official expected capabilities → where they are
 
@@ -103,14 +108,17 @@ Full traceability: [docs/REQUIREMENTS_MATRIX.md](docs/REQUIREMENTS_MATRIX.md).
 
 ## Screenshots
 
-**Normal state — the 10-second read**
-![All five zones normal](docs/screenshots/normal.jpg)
+**Normal city — the 10-second read**
+![All zones normal](docs/screenshots/normal.jpg)
 
-**Heavy rain over Zone 3 — possible disruption, agent alert, heat-map timeline**
+**Heavy rainfall scenario — Zone 3 possible disruption, glowing rain, congestion corridors, alerts**
 ![Zone 3 in possible disruption](docs/screenshots/disruption.jpg)
 
-**Investigation panel — possible impact, evidence and plain-language explanation**
+**Zone story — evidence, possible relationship (not a cause) and advice for residents**
 ![Zone 3 details](docs/screenshots/zone.jpg)
+
+**Demo drawer — a scenario unfolding, beats ticked only when the analysis detects them**
+![Demo drawer](docs/screenshots/demo.jpg)
 
 **Historical replay — yesterday's recorded storm, same engine, labelled not live**
 ![Replay of the recorded storm](docs/screenshots/replay.jpg)
@@ -165,18 +173,20 @@ Copy `.env.example` to `backend/.env`. Everything is optional:
 
 ## Demo mode
 
-Click **Demo controls** (top-right of the map):
+Click **Demo** in the header:
 
-1. **Run full scenario** — heavy rain over Zone 3; watch Attention → early warning →
-   anomalies → possible links → **Possible disruption** in about 90 seconds, then an unrelated
-   traffic build-up in Zone 1 that CityPulse does *not* link to the rain.
-2. **Trigger an event** in any zone: heavy rain, traffic spike, outage cluster, poor air.
-3. **Simulate a feed failure**: set any feed to Outage, Delayed or Malformed and watch its status
-   chip, the alerts and the summary respond.
-4. **Normal state** resets everything.
-5. **Replay storm** (top-right of the map) — replays last evening's recorded storm through the
-   same pipeline. Play, pause, step, change speed, or click a key moment such as
-   *"18:25 Possible relationship found"*. **Back to live** returns to the live view.
+1. **Scenarios** — pick a preset (e.g. *Heavy rainfall*) and **Run scenario**. Use **Pause**,
+   **1×/2×/4×** and **Reset**. The storyline ticks each beat (rain begins → traffic builds →
+   water rises → reports → possible relationship → possible disruption) only when the
+   analysis actually detects it. A pill at the top keeps the controls handy when the drawer is
+   closed.
+2. **Custom** — sliders for rain, flooding, traffic, accident, power outage and air pollution in
+   any zone.
+3. **Feed failures** — set any feed to Outage, Delayed or Malformed and watch CityPulse degrade
+   gracefully.
+4. **Replay** (header) — last evening's recorded storm through the same pipeline.
+
+Full script with timings: [docs/DEMO.md](docs/DEMO.md).
 
 ## Fallback architecture (short version)
 
@@ -199,7 +209,8 @@ Click **Demo controls** (top-right of the map):
 | GET | `/api/anomalies`, `/api/correlations`, `/api/risks` | Analysis output |
 | GET | `/api/summary`, `/api/alerts`, `/api/agent` | Explanations, alerts, agent trace |
 | GET | `/api/sources/status`, `/api/sensors`, `/api/timeline` | Feed health, IoT layer, heat-map |
-| POST | `/api/simulation/event`, `/reset`, `/scenario`, `/feed-fault` | Demo controls |
+| GET | `/api/simulation/scenarios`, `/api/simulation/status` | Scenario presets, what's running |
+| POST | `/api/simulation/scenario`, `/playback`, `/custom`, `/event`, `/reset`, `/feed-fault` | Demo: presets, pause/speed, custom sliders, events, faults |
 | GET | `/api/replay`, `/api/replay/frames/{i}`, `/api/replay/frames/{i}/zones/{id}` | Historical replay |
 
 Interactive docs at <http://127.0.0.1:8000/docs> while the backend runs.
@@ -215,13 +226,13 @@ backend/
     analysis/       baselines, anomalies, correlation, risk, engine
     ai/             fact sheet, templates, LLM client, grounding validator
     agent/          monitoring agent
-    simulation/     demo events, scenario, synthetic history, historical replay
+    simulation/     scenario presets, scenario clock, custom scenarios, history, replay
     services/       pipeline, feed manager, rolling store, persistence
     geo/            demo zones and geometry
-  tests/            104 tests (normalization, analysis, resilience, AI, agent, replay, API)
+  tests/            119 tests (normalization, analysis, resilience, AI, agent, scenarios, replay, API)
 frontend/
   src/
-    components/     TopBar, PulseStrip, map/, zone/, panels
+    components/     Header, AlertsCard, map/ (layers, legend), zone/ (zone story), drawers/ (Demo, Insights)
     hooks/ services/ types/ utils/
 docs/               guides, API, database, demo, presentation, judge Q&A, screenshots
 ```

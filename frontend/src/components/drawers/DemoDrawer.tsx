@@ -185,6 +185,9 @@ export function NowPlaying({ sim, zones, busy, act }: { sim: SimulationStatus; z
           </li>
         ))}
       </ol>
+      <p className="mt-1.5 text-[10.5px] text-[var(--faint)]">
+        Beats tick only when the analysis detects them. “~T+” = typical time at 1×; at 2×/4× detection lands later in scenario time because analysis windows run on the real clock.
+      </p>
       {focus && (
         <p className="mt-3 rounded-lg px-2.5 py-1.5 text-[12px]" style={{ background: "rgba(0,0,0,0.25)" }}>
           <span className="text-[var(--muted)]">CityPulse now says: </span>

@@ -53,14 +53,17 @@ Built with **React** (a library for building UIs out of reusable components) and
 (JavaScript with types, which catches mistakes early), bundled by **Vite**, styled with
 **Tailwind CSS** (utility classes like `p-3` for padding).
 
-- **Top bar:** logo, the *pulse strip* (a heartbeat line — colour = worst zone, speed = how much
-  is unusual), feed-health chips, live clock.
-- **Left column:** "Right now" summary, monitoring-agent alerts, live signal stream (and demo
-  controls when opened).
-- **Map (the hero):** zones coloured green/amber/red with a status word and icons; rain circles;
-  report dots; optional IoT sensors; legend; status heat-map.
-- **Zone panel:** click a zone to investigate — signals vs normal, possible relationships with
-  "Why this flag?", a 15-minute chart, recent reports, the agent's reasoning.
+- **Map (the hero):** fills the screen. Normal zones are faint, attention zones amber, possible
+  disruptions glow red. Rain cells, congestion corridors, incident icons (only when unusual), an
+  air-quality haze and optional IoT sensors.
+- **Header:** logo, a beating heart (colour = worst zone, speed = how much is unusual), the mode
+  (LIVE / DEMO / REPLAY) and clock, one data-health chip, and the Insights / Replay / Demo buttons.
+- **Active alerts:** at most four, bottom-right; click one to jump to its zone.
+- **Zone panel:** click a zone — a short story (what's happening, evidence, possible relationship,
+  advice), then "Show the data behind this" for metrics, "Why these flags?", a chart and the
+  agent's reasoning.
+- **Drawers:** *Demo* (scenario presets with pause/speed, custom sliders, feed failures) and
+  *Insights* (summary, agent alerts, status heat-map, live signal stream) — closed by default.
 - **Replay bar:** in replay mode, controls to play back a recorded storm.
 
 Data arrives by **polling**: the browser asks `/api/dashboard` every 3 seconds.
@@ -277,7 +280,7 @@ npm install
 npm run dev
 ```
 
-Open <http://localhost:5173>. Tests: `cd backend && python -m pytest -q` (104 should pass).
+Open <http://localhost:5173>. Tests: `cd backend && python -m pytest -q` (119 should pass).
 Full guide: [SETUP.md](SETUP.md).
 
 ## 24. How to modify common things
@@ -321,5 +324,5 @@ colours in `components/map/mapColors.ts`.
 | All zones flicker amber after editing thresholds | Thresholds too tight for the noise — revert or loosen; run the tests. |
 | `KeyError` in `risk.py` after adding a rule | Add the rule's headline and advice to `_DISRUPTION_HEADLINES` and `_ADVICE`. |
 | Replay says "No recorded event found" | History wasn't generated — restart the backend once (or delete the database file). |
-| Tests fail after changing the city model | Some tests rely on its timing (e.g. red within ~90 s) — check `test_ai_agent_simulation.py`. |
-| Stuck in a weird demo state | Demo controls → **Normal state**. |
+| Tests fail after changing the city model | Some tests rely on its timing (every preset must reach its outcome within 240 s) — check `test_scenarios.py` and `test_ai_agent_simulation.py`. |
+| Stuck in a weird demo state | Demo → **Normal city**. |

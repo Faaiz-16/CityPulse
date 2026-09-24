@@ -31,8 +31,11 @@ the API serves its latest result (`CityState`), so a slow feed or AI call can't 
 | GET | [`/api/sensors`](#get-apisensors) | IoT sensor layer |
 | GET | [`/api/timeline`](#get-apitimeline) | Zone-status history (heat-map) |
 | GET | [`/api/simulation/status`](#get-apisimulationstatus) | Demo state |
-| POST | [`/api/simulation/event`](#post-apisimulationevent) | Trigger a civic event |
-| POST | [`/api/simulation/scenario`](#post-apisimulationscenario) | Run the full scenario |
+| GET | [`/api/simulation/scenarios`](#get-apisimulationscenarios) | Scenario presets and custom controls |
+| POST | [`/api/simulation/scenario`](#post-apisimulationscenario) | Run a scenario preset |
+| POST | [`/api/simulation/playback`](#post-apisimulationplayback) | Pause / resume / speed |
+| POST | [`/api/simulation/custom`](#post-apisimulationcustom) | Custom scenario from sliders |
+| POST | [`/api/simulation/event`](#post-apisimulationevent) | Trigger a single civic event |
 | POST | [`/api/simulation/reset`](#post-apisimulationreset) | Back to normal |
 | POST | [`/api/simulation/feed-fault`](#post-apisimulationfeed-fault) | Simulate a feed failure |
 | GET | [`/api/replay`](#get-apireplay) | Replay metadata |
@@ -248,7 +251,49 @@ Events change the **synthetic city**, not the analysis — CityPulse has to dete
 
 ### GET `/api/simulation/status`
 
-`{active_events: [{event, label, zone_id, started_at, ends_at, level}], scenario: {name, focus_zone, started_at, elapsed_s, stages: [{key, label, reached_at}]} | null, available_events: [...]}`
+```
+{ active_events: [{event, label, zone_id, started_at, ends_at, level}],
+  scenario: { id, name, focus_zone, expected, started_at, elapsed_s, complete,
+              stages: [{key, label, reached_at, t_plus_s, expected_at_s}] } | null,
+  clock: { speed, paused },
+  custom: { zone_id, values } | null,
+  presets: [...], custom_controls: [...], available_events: [...] }
+```
+
+`elapsed_s` and `t_plus_s` are in **scenario time** (they stop while paused and run faster at 2×/4×).
+
+### GET `/api/simulation/scenarios`
+
+The presets: `[{id, name, tagline, zone_id, severity, duration_s, feeds, expected, icon, beats: [{key, label, expected_at_s}]}]`
+and the custom slider list.
+
+### POST `/api/simulation/scenario`
+
+```json
+{ "name": "heavy_rain" }
+```
+
+`name`: `heavy_rain`, `flash_flood`, `traffic`, `accident`, `power_outage`, `poor_air`, `storm`,
+`multi_event` (alias `full`). Resets the city, then plays the preset's timed effects. Storyline
+beats are ticked only when the analysis output shows them. Unknown name → `400` listing valid ids.
+
+### POST `/api/simulation/playback`
+
+```json
+{ "action": "speed", "speed": 2 }
+```
+
+`action`: `pause`, `resume`, `speed` (with `speed` 1, 2 or 4). Scenario time is paused or
+accelerated; analysis keeps running on the real clock.
+
+### POST `/api/simulation/custom`
+
+```json
+{ "zone_id": "Z3", "values": { "rain": 1.0, "traffic": 0.6 }, "duration_s": 900 }
+```
+
+`values` keys: `rain`, `flooding`, `traffic`, `accident`, `outage`, `air`, each 0–1.5 (0 removes it).
+Replaces any previous custom scenario.
 
 ### POST `/api/simulation/event`
 
@@ -258,19 +303,14 @@ Events change the **synthetic city**, not the analysis — CityPulse has to dete
 
 | Field | Rules |
 |---|---|
-| `event` | `heavy_rain`, `traffic_spike`, `incident_cluster`, `poor_air` |
+| `event` | `heavy_rain`, `flooding`, `traffic_spike`, `road_accident`, `incident_cluster`, `poor_air` |
 | `zone_id` | `Z1`–`Z5` |
 | `intensity` | 0.2–1.5 (optional, default 1.0) |
 | `duration_s` | 60–3600 (optional, default 600) |
 
 Response: `{"ok": true, "message": "Heavy rain in Zone 3 — East started. …"}`
 Invalid input → `422`:
-`{"error": "invalid_request", "detail": ["event: Input should be 'heavy_rain', 'traffic_spike', 'incident_cluster' or 'poor_air'"]}`
-
-### POST `/api/simulation/scenario`
-
-Body `{"name": "full"}`. Resets the city, then heavy rain over Zone 3 after 6 s and an unrelated
-traffic build-up in Zone 1 after 70 s. Stages are ticked from real analysis output.
+`{"error": "invalid_request", "detail": ["event: Input should be 'heavy_rain', 'flooding', …"]}`
 
 ### POST `/api/simulation/reset`
 

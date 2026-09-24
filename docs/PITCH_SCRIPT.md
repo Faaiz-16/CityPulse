@@ -39,14 +39,13 @@ what and how serious in ten seconds. Click a zone and you get the why. Let me sh
 **Key point:** map for the 10-second read; panel for the investigation.
 
 ## Slide 5 — Live demo · 3 min 30 s
-**Show:** the browser. Follow [DEMO.md](DEMO.md) steps 1–8.
+**Show:** the browser. Follow [DEMO.md](DEMO.md) steps 1–7.
 **Must-say lines:**
 - "Status is colour plus an icon plus a word — never colour alone."
 - "We change the simulated city, not the analysis. CityPulse has to detect it."
-- "Early warning — before traffic crosses its threshold."
+- "The storyline only ticks when the analysis actually detects each beat."
 - "Same zone, same ten-minute window, rain came first — so *these signals may be related*.
   Not a confirmed cause."
-- "Zone 1: traffic is unusual but nothing related is, so we say insufficient evidence."
 - "Weather API down: everything else keeps running, and we say what we can't check."
 - "Replay: yesterday's storm through the exact same engine."
 **Key point:** it works end to end, honestly, even when things fail.
@@ -108,7 +107,7 @@ synthetic feeds for real ones — the normalizers, engine, agent and map stay ex
 ## Slide 13 — What we built ✂ · 20 s
 **Show:** the list.
 **Say:** "In 24 hours: five feeds, eight normalizers, the analysis engine, the agent, replay, the
-map-first interface, 104 automated tests and full documentation."
+map-first interface, 119 automated tests and full documentation."
 **Key point:** substance and reliability.
 
 ## Slide 14 — Close · 15 s

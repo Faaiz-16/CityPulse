@@ -75,7 +75,7 @@ A deterministic "ground truth" for every zone and moment:
 
 ```
 value = daily pattern (rush hours, evening air-quality peak) × zone character
-        + active simulation effects (rain, traffic spike, outage cluster, poor air)
+        + active simulation effects (rain, flooding, traffic, accident, outage, poor air)
         + small noise seeded from (seed, zone, metric, time)
 ```
 
@@ -169,6 +169,8 @@ A relationship is only *considered* when all of these hold:
 | `rain_traffic` | rainfall | traffic congestion | bus delays |
 | `rain_flooding` | rainfall | waterlogging reports, street water level | — |
 | `outage_traffic` | power/signal outage reports | traffic congestion | bus delays |
+| `accident_traffic` | road-accident reports | traffic congestion | bus delays |
+| `traffic_transit` | traffic congestion | bus delays | — (dropped when another link already explains the bus delays) |
 | `traffic_air` | traffic congestion | air quality | — |
 
 **Evidence score** (0–1): 0.40 base + up to 0.15 each for driver and response severity + 0.15
@@ -276,14 +278,22 @@ CHECK FEEDS → CHECK DATA QUALITY → CHECK ANOMALIES → CHECK RELATED SIGNALS
 
 ## 13. Simulation and demo (`app/simulation/`)
 
-- **Events:** heavy rain, traffic spike, outage cluster, poor air — any zone.
-- **Feed faults:** outage, delay, malformed — any feed.
+- **Scenario presets** (`scenarios.py`): Heavy rainfall (Z3), Flash flood (Z4), Major congestion
+  (Z2), Road accident (Z1), Power outage (Z4), Poor air quality (Z5), Severe storm (Z2) and
+  Multi-event evening (Z3 + an unrelated jam in Z1 that must *not* be linked to rain). Each is a
+  timed list of effects plus a **storyline** of beats (e.g. rain begins → traffic builds → water
+  rises → reports → possible relationship → possible disruption).
+- Beats are ticked off from the **actual analysis output** (value, deviation, anomaly flag, link
+  or status checks), never a timer — the storyline proves what the system detected and when.
+- **Scenario clock** (`SimClock` in `city_model.py`): effects are evaluated in scenario time,
+  which can **pause** or run at **1×/2×/4×**. Analysis windows stay on the real clock, so at 2×/4×
+  the same story unfolds in less real time.
+- Effects ramp in with realistic lags (rain first, traffic minutes later). Event-driven reports use
+  a deterministic accumulator so the report surge is reliable; background reports stay Poisson.
+- **Custom:** sliders for rain, flooding, traffic, accident, outage and air pollution in any zone
+  (`set_custom()`), each mapped to the same effects the presets use.
+- **Single events** and **feed faults** (outage, delay, malformed — any feed) remain available.
 - **Replay recorded storm:** see section 14.
-- **Full scenario** ("Monsoon evening in Zone 3"): reset → heavy rain over Zone 3 at +6 s →
-  an unrelated traffic build-up in Zone 1 at +70 s (to show CityPulse does *not* link it to rain).
-- Scenario **stages** (Rain begins → Traffic increases → Reports increase → Anomalies →
-  Possible link → Potential disruption) are ticked off from the **actual analysis output**, not
-  a timer, so the checklist proves what the system detected and when (≈ 90 s end-to-end).
 - **Warm-up:** on start and reset, the last 10 minutes are back-filled so rolling windows are
   meaningful immediately.
 
@@ -319,23 +329,30 @@ stored history ─► find the recorded event (first/last heavy-rain reading in 
 ## 15. Frontend structure
 
 ```
-App.tsx
-├── TopBar ── PulseStrip (heartbeat: colour = worst status, speed = activity) · FeedHealthBar · live/replay clock
-├── Left column ── DemoPanel (optional) · SummaryPanel ("Right now") · AlertsList (agent) · EventTicker
-└── Map area
-    ├── CityMap ── zone polygons · zone labels · rain cells · report dots · IoT sensors
-    ├── LayerToggles · MapLegend · PulseTimeline (zone × time heat-map)
-    ├── ReplayBar (replay mode) ── play/pause/step/speed · zone × time scrubber · key moments
-    └── ZonePanel ── risk cards · explanation · metric cards · relationship cards ("Why this flag?")
-                     · 15-minute chart · recent reports · agent trace · data sources
+App.tsx  (full-bleed map; everything else floats over it)
+├── CityMap ── zone areas (faint / amber / glowing red) · zone labels · rain cells
+│             · congestion corridors · incident clusters (only when unusual) · air haze · IoT sensors
+├── Header ── logo · PulseChip (heart: colour = worst zone, speed = bpm) · LIVE/DEMO/REPLAY + clock
+│             · DataHealth (one chip, details on click) · Insights · Replay · Demo
+├── LayerToggles · PulseLegend (collapsible)
+├── AlertsCard ── at most 4 active alerts (2 on phones); click → zone
+├── DemoPill ── scenario progress + playback while the Demo drawer is closed
+├── Left drawers (closed by default)
+│   ├── DemoDrawer ── Scenarios (presets, storyline, pause/speed/reset) · Custom sliders · Feed failures
+│   └── InsightsDrawer ── SummaryPanel · AlertsList (agent) · PulseTimeline · EventTicker
+├── ZonePanel (right) ── status · what's happening · evidence · possible relationship · for residents
+│             └── "Show the data behind this": metric cards · "Why these flags?" · 15-min chart
+│                 · recent reports · agent trace · data sources
+└── ReplayBar (replay mode) ── play/pause/step/speed · zone × time scrubber · key moments
 ```
 
 In replay mode (`useReplay`), every panel reads the current recorded frame instead of the live
 state — the same components render both. `usePolling` keeps the last good data when a request fails and shows a "connection lost" banner
 instead of blanking the screen.
 
-**10-second read:** the default view shows five zones, each with one status word, an icon and
-issue chips, plus a one-sentence headline. Details live one click away.
+**10-second read:** the default view is the map, a slim header and a few alerts. Normal zones are
+faint; attention zones amber; possible disruptions are highlighted red areas with a two-line
+label. Everything else is progressive disclosure — one click away.
 
 ## 16. Database schema (summary)
 

@@ -72,10 +72,27 @@ Legend: ✅ verified · ⚠️ verified with a caveat · ❌ not done
 | Clean `.gitignore` | ✅ | secrets, envs, builds, databases, OS/editor files |
 | `.env.example` accurate | ✅ | `test_every_env_example_variable_is_a_real_setting` |
 
+## Map-first UI (redesign acceptance)
+
+| Item | Status | Evidence |
+|---|---|---|
+| Default screen far cleaner; map dominates | ✅ | `docs/screenshots/normal.jpg` — header, legend, alerts only |
+| No permanent demo/control panel | ✅ | Demo and Insights are closed-by-default drawers |
+| Important incidents visible immediately; hierarchy | ✅ | Red disruption area + label; icons only when a report type is unusual |
+| Compact legend; ≤ 4 alerts | ✅ | `MapControls.tsx`, `AlertsCard.tsx` (2 on phones) |
+| Zone details on interaction | ✅ | Zone story drawer; data behind it on demand |
+| Demo button, drawer, multiple realistic scenarios | ✅ | 8 presets + custom sliders + feed failures |
+| Scenarios change the real feeds and produce anomalies/links/impact | ✅ | `test_every_preset_propagates_through_the_pipeline` (8 presets) |
+| Pause / speed / reset | ✅ | `test_pause_*`, `test_speed_*`; browser check |
+| Correlation never presented as causation | ✅ | Tests scan statements; UI tags "Not a confirmed cause" |
+| Replay and feed failures still work | ✅ | `test_replay.py`, `test_resilience.py`; browser check |
+| No console errors; no TypeScript/build errors | ✅ | Fresh-tab console check across views; `tsc` + `vite build` clean |
+| Responsive | ✅ | Checked at 375 × 812: compact header, capped alerts, drawers full-width |
+
 ## Before the judging slot
 
 - [ ] Start both servers (or one-server mode) 5 minutes early; open `/api/health`
-- [ ] Demo controls → **Normal state**
+- [ ] Demo → **Normal city**
 - [ ] Rehearse [DEMO.md](DEMO.md) once with a timer
 - [ ] Fill in the team table in `README.md` and the team name in the pitch
 - [ ] Optional: set `ANTHROPIC_API_KEY` and confirm the "AI-assisted" badge appears; if anything

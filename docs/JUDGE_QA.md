@@ -126,8 +126,8 @@ our feed rates.
 ### 16. How do you avoid fake correlations?
 **Short:** A relationship needs a logical rule, both signals anomalous, the same zone, the same
 window and timing that fits — co-occurrence alone is never enough.
-**Detailed:** Only four plausible rules exist (rain→traffic, rain→flooding, outages→traffic,
-traffic→air quality). Evidence is scored for severity, timing, co-movement and supporting
+**Detailed:** Only six plausible rules exist (rain→traffic, rain→flooding, outages→traffic,
+accident→traffic, traffic→bus delays, traffic→air quality). Evidence is scored for severity, timing, co-movement and supporting
 signals; weak evidence is labelled "insufficient". In the demo, an unrelated Zone 1 traffic
 spike is *not* linked to Zone 3 rain.
 **Technical:** `analysis/correlation.py`; score ≥ 0.8 strong, ≥ 0.6 moderate.
@@ -243,7 +243,7 @@ parallelize naturally. For a large city: a message queue for ingestion, a time-s
 
 ### 33. What did you build during the hackathon?
 **Short:** Everything in the repo: feeds, normalizers, analysis engine, agent, AI layer,
-replay, the React map UI, 104 tests and the documentation.
+replay, the React map UI, 119 tests and the documentation.
 
 ### 34. What's the historical replay?
 **Short:** Yesterday's recorded storm replayed minute by minute through the exact same engine
@@ -252,6 +252,16 @@ and agent — proof the detection works on past data, not just a scripted demo.
 ARCHIVE / not live. Detection unfolds: rain 18:18 → traffic 18:23 → possible link 18:25 →
 disruption 18:26.
 **Technical:** `simulation/replay.py`.
+
+### 34b. Aren't the demo scenarios just scripted results?
+**Short:** No — a scenario only changes the simulated *city*; everything you see is detected by the
+normal pipeline, and the storyline ticks a beat only when the analysis output shows it.
+**Detailed:** "Heavy rainfall" raises rainfall in Zone 3; the feeds report it in their own
+formats, normalization, baselines, anomaly rules, correlation, risk and the agent do the rest.
+There is no hard-coded text for the result. A test runs every preset through the pipeline and
+checks it reaches its outcome; the poor-air preset deliberately ends with *no cause claimed*.
+**Technical:** `simulation/scenarios.py`, `tests/test_scenarios.py`; scenario time can pause or
+run at 2×/4× (`SimClock`) while analysis windows stay on the real clock.
 
 ### 35. What are the limitations?
 **Short:** Synthetic data and demonstration zones; hand-written relationship rules; we can show

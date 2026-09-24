@@ -48,12 +48,12 @@ Visual: five disconnected app icons, each saying something different.
 - **Zone panel** answers *why might this be happening*
 - **Plain language** · **monitoring agent** · **survives feed failures**
 
-Visual: screenshot, normal state, with callouts: status word, pulse strip, feed chips.
+Visual: `docs/screenshots/normal.jpg` with callouts: pulse heart, zone labels, alerts, Demo button.
 
 ## Slide 5 — Live demo
 
-Switch to the browser. Follow [DEMO.md](DEMO.md): normal → scenario → early warning → red →
-"Why this flag?" → unrelated spike → weather outage → replay.
+Switch to the browser. Follow [DEMO.md](DEMO.md): calm city → Demo → Heavy rainfall at 2× →
+amber → red → click the alert → zone story → weather outage → replay.
 
 ## Slide 6 — Architecture
 
@@ -125,8 +125,8 @@ Visual: one messy raw record on the left, the clean normalized record on the rig
 ## Slide 13 — What we built in 24 hours ✂
 
 - 5 feeds · 8 normalizers · anomaly + correlation + risk engine · monitoring agent · replay
-- Map-first React UI with investigation panel, demo controls and replay
-- 104 automated tests · full documentation
+- Map-first React UI: zone story, Demo drawer with 8 scenarios + custom sliders, Insights, replay
+- 119 automated tests · full documentation
 - Stack: Python, FastAPI, SQLAlchemy/SQLite, React, TypeScript, Tailwind, Leaflet, Recharts
 
 **Next:** real feeds, subscriptions for residents, relationship discovery reviewed by humans,

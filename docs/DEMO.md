@@ -3,126 +3,119 @@
 A reliable, rehearsable walkthrough for judges. Everything runs locally; the only internet
 dependency is the map background (the demo still works without it).
 
+The interface is **map-first**: the default screen is the map, a slim header, a compact legend and
+at most four active alerts. Everything else opens on demand — **Demo** and **Insights** drawers on
+the left, the **zone story** on the right, **Replay** at the bottom.
+
 ---
 
 ## Before you present (5 minutes earlier)
 
-1. Start the backend and frontend (see [SETUP.md](SETUP.md)).
-2. Open <http://localhost:5173> in a full-screen browser window (1440 × 900 or larger looks best
-   on a projector). Zoom the browser to 100 %.
-3. Click **Demo controls → Normal state**. All five zones should be green; the pulse strip says
-   *City normal*.
-4. Check <http://127.0.0.1:8000/api/health> shows `"status": "ok"`.
-5. Close the demo panel. Leave the map at its default view.
+1. Start the backend and frontend (see [SETUP.md](SETUP.md)), or one-server mode.
+2. Open <http://localhost:5173> full-screen (1440 × 900 or larger looks best on a projector).
+3. Header → **Demo** → **Normal city**. Close the drawer (✕ or Esc).
+4. Check: header says **City normal**, mode **LIVE**, data chip **Data OK · demo city**,
+   alerts say **All clear**.
 
 Pre-flight checklist:
 
-- [ ] All five feed chips say **SIMULATED** (or LIVE if live APIs are on)
-- [ ] "Right now" says *All zones look normal right now.*
-- [ ] Monitoring agent says *Watching all feeds — nothing needs attention.*
+- [ ] Five zone labels are small and green; nothing glowing on the map
+- [ ] Active alerts: *All clear — nothing unusual right now.*
 - [ ] Laptop won't sleep; notifications off
 
-## Timeline at a glance
+## Timeline at a glance (Heavy rainfall at 2×)
 
 | Time | What you do | What judges see |
 |---|---|---|
-| 0:00 | Open on the map | Five green zones, pulse strip, feed chips |
-| 0:20 | Click **Zone 3** | Investigation panel: current vs normal, rules |
-| 0:40 | **Demo controls → Run full scenario** | Rain begins over Zone 3 |
-| 1:30 | Point at Zone 3 turning **amber** (~50 s after start) | Early warning: "Traffic may slow in Zone 3" |
-| 1:55 | Zone 3 turns **red** (~70–75 s after start) | "Possible disruption", critical agent alert |
-| 2:05 | Open **Why this flag?** | Evidence: same zone, same window, timing, co-movement, caveat |
-| 2:40 | Point at Zone 1 turning amber (~2 min after start) | Traffic unusual — *insufficient evidence*, not blamed on rain |
-| 3:00 | **Weather → Outage** | Weather chip → FALLBACK; summary says what can't be checked |
-| 3:30 | **Replay storm** → click key moments | Same engine detects yesterday's recorded storm |
-| 4:10 | **Back to live**, wrap up | Architecture and scale in one sentence |
+| 0:00 | Open on the map | Calm city: faint zones, green heart, "All clear" |
+| 0:20 | **Demo → Heavy rainfall → Run scenario**, set **2×**, close the drawer | Demo pill: *Heavy rainfall · T+… · 0/8 detected* |
+| 0:45 | (≈ 24 s after start) | Rain cells appear; Zone 3 turns **amber** |
+| 1:20 | (≈ 60 s after start) | Zone 3 **Possible disruption**: red area, traffic corridors, waterlogging cluster; heart turns red and speeds up; alerts update |
+| 1:30 | Click the top alert | Map flies to Zone 3; zone story opens |
+| 2:20 | **Show the data behind this** | Metrics vs normal, "Why these flags?", 15-minute chart |
+| 2:50 | **Demo → Feed failures → Weather: Outage** | Data chip turns amber; alert "Weather using fallback data"; later "cannot check" wording |
+| 3:30 | **Replay** (header) → click key moments | Yesterday's recorded storm through the same engine |
+| 4:10 | **Back to live**, close | One sentence on scale |
 
 ## Step by step
 
 ### 1. The 10-second read (0:00–0:20)
 **Show:** the opening screen.
-**Say:** "This is CityPulse. A resident opens it and in ten seconds knows where something is
-happening, how serious it is, and what kind of issue it is. Right now: five zones, all normal —
-green, a tick, and the word *Normal*, never colour alone."
-Point at the pulse strip: "That heartbeat is the city's pulse. Its colour is the worst zone and
-it beats faster when more is unusual."
-Point at the feed chips: "Five feeds, and we always show their health."
+**Say:** "This is CityPulse. A resident opens it and in ten seconds knows: is the city OK, where is
+the problem, what kind, how serious. Right now the heart is green and calm, the zones are quiet,
+and there are no alerts. We only draw what matters."
 
-### 2. The investigation layer (0:20–0:40)
-**Click:** Zone 3 on the map.
-**Say:** "Click any zone and you get the *why*: every signal against what's normal for this zone at
-this time of day, the percentage difference, and the exact rule we use — for example traffic is
-flagged at 30 % above normal."
-**Close** the panel (✕ or Esc).
+### 2. Create an incident (0:20–0:45)
+**Click:** header **Demo** → **Heavy rainfall** → **Run scenario** → **2×**. Close the drawer.
+**Say while waiting:** "We're not faking the result. The scenario changes the simulated *city* —
+rain gauges, road sensors, bus feeds, 311 reports and water sensors — each in its own messy
+format. CityPulse has to normalize, detect and connect it on its own. The pill up top counts the
+storyline beats the analysis has actually detected."
 
-### 3. Trigger the scenario (0:40–1:30)
-**Click:** Demo controls → **Run full scenario**. (The demo panel appears in the left column and
-shows a stage checklist.)
-**Say while waiting:** "We're now simulating heavy rain over Zone 3. Important: we're not faking
-the analysis — we change the simulated *city*, and the feeds report it in five different
-formats: Fahrenheit, epoch milliseconds, CSV with day-first dates, Open311 reports with personal
-fields we strip out. CityPulse has to normalize and detect it on its own. The checklist only
-ticks when the analysis actually detects each stage."
+### 3. Watch it develop (0:45–1:20)
+**Show:** blue rain cells over Zone 3; the zone goes **amber**, then **red** with glowing traffic
+corridors and a waterlogging icon cluster; the heart turns red and beats faster.
+**Say:** "Rain first, then traffic builds, water rises on the streets, reports come in — same zone,
+same ten-minute window. Only then does CityPulse call it a possible disruption."
 
-### 4. Early warning (≈ 1:30 — about 50 s after starting the scenario)
-**Show:** Zone 3 turns **amber**; the agent posts *Early warning: Traffic may slow in Zone 3*.
-**Say:** "Rain is heavy and traffic is climbing but hasn't crossed its threshold yet — so we warn
-*before* it becomes a disruption. That's the brief's 'alerts are reactive, not predictive'
-problem."
+### 4. Ask why (1:30–2:50)
+**Click:** the top alert (*Elevated traffic disruption risk · Zone 3*).
+**Show:** the zone story — status, what's happening, measured evidence, possible relationship,
+advice for residents.
+**Say:** "Look at the wording: the signals *may be related* — a possible link, not a confirmed
+cause. And residents get one sentence of advice."
+**Click:** *Show the data behind this* → point at a metric card and *Why these flags?*
+**Say:** "Every flag is traceable: value, normal for this time of day, percentage, rule, strength."
 
-### 5. Possible disruption (≈ 1:55 — about 70–75 s after starting)
-**Show:** Zone 3 turns **red**, the ring pulses, the pulse strip turns red and speeds up, the
-agent raises a **critical** alert.
-**Click:** Zone 3 → the **Possible impact** card and the first relationship's **Why this flag?**
-**Say:** "Now we have heavy rain, traffic about 80 % above normal, bus delays, water on the street
-sensors and waterlogging reports — same zone, same 10-minute window, and the rain started first.
-So we say *these signals may be related*. Look at the wording: 'a possible link, not a confirmed
-cause'. The agent's alert keeps what we observed, the possible link and the causation note
-separate."
-
-### 6. Correlation is not causation (≈ 2:40)
-**Show:** about 2 minutes into the scenario Zone 1 turns **amber** (an unrelated traffic build-up
-that starts at 70 s and takes ~50 s to become unusual).
-Click Zone 1.
-**Say:** "Here traffic is unusual in Zone 1, but nothing related is — no rain, no outages. So
-CityPulse says *insufficient evidence to suggest any explanation*. It doesn't invent a reason."
-
-### 7. Feed failure (≈ 3:00)
-**Click:** Demo controls → Weather → **Outage**.
-**Show:** the Weather chip turns **FALLBACK** within ~10 s ("showing last known values"), then
-**UNAVAILABLE** after ~90 s. The agent adds a data-quality alert. The summary adds a note.
-**Say:** "One API fails — everything else keeps running. We say exactly what's missing, we never
-present old data as live, and once rain data ages out, CityPulse says *it cannot check* whether
-rain is involved, instead of guessing."
+### 5. Break something (2:50–3:30)
+**Click:** Demo → **Feed failures** → Weather → **Outage**. Close the drawer.
+**Show:** the header data chip turns amber (*Weather using fallback data*, then *temporarily
+unavailable*); an info alert appears; the zone story later says CityPulse *cannot check* whether
+rain is involved.
+**Say:** "One feed fails — everything else keeps running, and we say exactly what we can no
+longer check instead of guessing."
 Set Weather back to **Healthy**.
 
-### 8. Historical replay (≈ 3:30)
-**Click:** **Normal state**, then **Replay storm** (top-right of the map).
-**Show:** the top bar says *Replay · Recorded … — not live*; feed chips say **ARCHIVE**. Click the
-key-moment chips: *Rain begins → Traffic increases → Possible relationship found → Potential
-disruption flagged*.
-**Say:** "This is yesterday evening's recorded storm, replayed minute by minute through the exact
-same engine and agent. It proves the detection works on past data, not just a scripted demo."
+### 6. Past data (3:30–4:10)
+**Click:** header **Replay**. Click the key-moment chips: *Rain begins → Traffic increases →
+Possible relationship found → Potential disruption flagged*.
+**Say:** "This is yesterday's recorded storm, replayed minute by minute through the exact same
+engine and agent — REPLAY mode, archive data, clearly not live."
 **Click:** **Back to live**.
 
-### 9. Close (≈ 4:10)
-**Say:** "Five mismatched feeds, one common model, honest analysis, a map anyone can read — and it
-survives failures. To go live in a real city you swap the synthetic feeds for real ones; the
-normalizers, engine, agent and map stay the same."
+### 7. Close (4:10)
+**Say:** "Disconnected signals, one honest pulse: where, what, how serious — and only possibly
+why. In a real city you swap the simulated feeds for real ones; everything else stays."
+
+## Other scenarios worth showing
+
+| Scenario | Zone | What it demonstrates | Typical time to result at 1× |
+|---|---|---|---|
+| Flash flood | 4 | Rain + street flooding + waterlogging surge | ~75 s |
+| Major congestion | 2 | Traffic → bus delays → air quality, **no weather link claimed** | ~145 s |
+| Road accident | 1 | Accident reports → queue → possible disruption | ~95–145 s |
+| Power outage | 4 | Outage + signal reports → traffic at dark junctions | ~130 s |
+| Poor air quality | 5 | Flagged, but *"no related signal — no cause claimed"* | ~25 s |
+| Severe storm | 2 | Rain + flooding + power cuts, three linked signals | ~85 s |
+| Multi-event evening | 3 (+1) | Rain in Zone 3 and an unrelated jam in Zone 1 that is **not** blamed on the rain | ~70 s |
+
+Use **2×/4×** to speed any of them up, **Pause** to talk over a frozen moment, **Reset** to
+return to normal. The **Custom** tab sets rain, flooding, traffic, accident, outage and air
+pollution with sliders for any zone.
 
 ## If something goes wrong
 
 | Problem | Recovery |
 |---|---|
-| Scenario feels slow | Keep talking through step 3; the red state reliably arrives ~75 s after starting (measured: amber 48 s, red 72 s). Or jump to **Replay storm** — it shows the same story instantly. |
+| Story feels slow | Switch to **4×** in the demo pill, or use **Replay** — it shows the same story instantly. |
 | Map background doesn't load (no internet) | Say "map tiles need internet; the data doesn't" — zones, labels and panels still work. |
-| Browser shows "Connecting…" | Backend stopped — restart it; the page reconnects by itself. |
-| Something looks stuck in red after the demo | **Demo controls → Normal state**. |
-| A judge asks to break something | Let them pick any feed and fault mode — that's the point. |
+| Screen shows "Connecting…" | Backend stopped — restart it; the page reconnects by itself. |
+| Something looks stuck after the demo | Demo → **Normal city**. |
+| A judge asks to break something | Demo → Feed failures — let them pick any feed and mode. |
 
 ## Shorter version (2 minutes)
 
-1. Opening screen (10-second read) — 20 s
-2. **Replay storm** → click through the key moments — 60 s
-3. **Weather → Outage** → point at the chip and the "cannot check" wording — 30 s
-4. Close — 10 s
+1. Opening screen (10-second read) — 15 s
+2. **Replay** → click through the key moments → click the red zone — 60 s
+3. Demo → Feed failures → Weather **Outage** → point at the data chip — 30 s
+4. Close — 15 s

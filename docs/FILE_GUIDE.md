@@ -108,7 +108,8 @@ critical alert, reasoning `trace`, best-effort persistence callback.
 
 | File | Purpose | Important contents |
 |---|---|---|
-| `controller.py` | Demo events and the full scenario | `trigger()` with input validation, `start_full_scenario()`, `advance()` (timed steps), `storm_stages()` + `advance_stages()` (stages ticked from real analysis output, shared with replay), `status()` |
+| `scenarios.py` | Scenario presets | `PRESETS` (8 scenarios: timed effect steps + storyline `Beat`s with real-analysis checks), `CUSTOM_CONTROLS` (slider → effect) |
+| `controller.py` | Demo controls | `trigger()` with input validation, `start_scenario()`, `advance()` (timed steps in scenario time), `observe()` (ticks beats from analysis output), `pause()` / `resume()` / `set_speed()`, `set_custom()`, `storm_stages()` + `advance_stages()` (shared with replay), `status()` |
 | `history.py` | Synthetic multi-day history | `generate_history()` every 5 min for 3 days, plus a 1-minute archive around a recorded storm (yesterday evening, Zones 3–4) with realistic minute-scale lags |
 | `replay.py` | Historical replay | `ReplayService` finds the recorded event, loads the archive, runs the same `AnalysisEngine` + a fresh `MonitoringAgent` minute by minute, caches frames, key moments and zone details |
 
@@ -137,6 +138,7 @@ validate input with Pydantic (`EventRequest`, `FaultRequest`); 404/400 with help
 | `test_analysis.py` | Anomaly rules (incl. the brief's 147 vs 100 example), Poisson test, correlation rules, timing, insufficient evidence, cannot-assess, risk insights, zone status |
 | `test_resilience.py` | Weather/traffic outages, delay→stale, recovery, malformed data, live API timeout / 429 / bad JSON / success, database outage |
 | `test_ai_agent_simulation.py` | Validator, AI fallback, validated AI text, agent alerts + hysteresis, invalid simulation input, full scenario stages, unrelated spike not linked, reset, determinism |
+| `test_scenarios.py` | Every preset reaches its outcome through the real pipeline; poor air claims no cause; pause/resume/speed; custom sliders; scenario API |
 | `test_replay.py` | Replay finds the event, calm → disruption → recovery, key-moment order, same engine/agent, ARCHIVE labelling, baselines not distorted, replay API |
 | `test_api.py` | Every endpoint, safe error responses, simulation endpoints |
 | `test_config.py` | Every variable in `.env.example` is a real setting; no secret values committed |
@@ -158,34 +160,39 @@ validate input with Pydantic (`EventRequest`, `FaultRequest`); 404/400 with help
 | File | Purpose | Used by |
 |---|---|---|
 | `main.tsx` | Mounts `<App/>` | — |
-| `App.tsx` | Page layout: top bar, left column, map with overlays, zone panel; polling; live vs replay state; deep links (`?zone=Z3`, `?replay=1&frame=40`) | `main.tsx` |
+| `App.tsx` | Map-first layout: full-bleed map, floating header, legend, alerts, drawers, zone panel; polling; LIVE/DEMO/REPLAY mode; deep links (`?zone=Z3`, `?replay=1&frame=40`, `?demo=1`, `?insights=1`) | `main.tsx` |
 | `index.css` | Design tokens (colours), Tailwind import, map styling, dark basemap filter, animations (with reduced-motion support) | all components |
 | `types/index.ts` | TypeScript mirror of `backend/app/schemas.py` | everything |
-| `services/api.ts` | Typed API client with timeouts and readable error messages | `App`, `ZonePanel`, `DemoPanel` |
+| `services/api.ts` | Typed API client with timeouts and readable error messages | `App`, `ZonePanel`, `DemoDrawer` |
 | `hooks/usePolling.ts` | `usePolling` (keeps last good data on failure), `useNow` | `App`, `ZonePanel` |
 | `hooks/useReplay.ts` | Replay playhead: start/exit, play/pause, speed, frame cache + prefetch | `App` |
 | `utils/status.ts` | Status / feed / severity / strength colours, words and icons | most components |
 | `utils/format.ts` | Local time, "x s ago", numbers, percentages, units | most components |
+| `utils/alerts.ts` | `deriveAlerts()`: the few alerts worth showing (agent alerts, zone status, feed problems), most severe first | `AlertsCard`, `DemoPill` |
+| `utils/geo.ts` | Point-in-polygon and seeded scatter (stable rain-cell positions) | `CityMap` |
 
 ### `src/components/`
 
 | File | Purpose |
 |---|---|
-| `TopBar.tsx` | Brand, pulse strip, feed chips, live clock / replay clock ("Recorded … — not live") |
-| `PulseStrip.tsx` | Animated heartbeat: colour = worst zone status, speed = backend-computed bpm |
-| `FeedHealthBar.tsx` | One chip per feed with status word; click for message, age, accepted/rejected counts |
+| `Header.tsx` | Slim header: logo, pulse heart (colour = worst zone, speed = bpm), LIVE/DEMO/REPLAY + clock, data-health chip (feed details on click), Insights / Replay / Demo |
+| `AlertsCard.tsx` | Compact "Active alerts" card, capped at 4 (2 on phones); click an alert to open its zone |
+| `DemoPill.tsx` | Floating scenario progress + playback when the Demo drawer is closed |
+| `drawers/Drawer.tsx` | Shared glass drawer shell (title, close, Esc) |
+| `drawers/DemoDrawer.tsx` | Scenarios (preset cards, storyline beats, pause/speed/reset), Custom sliders, Feed failures |
+| `drawers/InsightsDrawer.tsx` | Summary, agent alerts, status heat-map timeline and live signal stream |
 | `SummaryPanel.tsx` | "Right now" headline + three-part explanation; `SourceTag` (Rule-based / AI-assisted) |
 | `AlertsList.tsx` | Monitoring-agent alerts: observed · possible link · causation note |
 | `EventTicker.tsx` | Live civic signal stream (reports, anomalies, links, alerts, feed changes) |
 | `PulseTimeline.tsx` | Zone × time heat-map of statuses over the last 30 minutes |
-| `DemoPanel.tsx` | Run scenario, reset, replay, trigger events per zone, inject feed faults, scenario stage checklist |
 | `ReplayBar.tsx` | Replay controls: play/pause/step/speed, zone × time scrubber, key-moment chips, back to live |
 | `ui/StatusBadge.tsx` | Status pill with colour + icon + word |
-| `map/CityMap.tsx` | Leaflet map: OSM tiles, zone polygons, rain cells, report dots, IoT sensors, zone labels, auto-framing of selected zone |
-| `map/zoneLabel.tsx` | Builds the zone label (name, status word, issue icons, "possible link") as a Leaflet `divIcon` |
-| `map/MapOverlays.tsx` | `MapLegend` and `LayerToggles` |
+| `map/CityMap.tsx` | Leaflet map: dark OSM tiles, zone areas (red ones glow), rain cells, congestion corridors, incident clusters (only when unusual), air haze, IoT sensors, zone labels, auto-framing of the selected zone |
+| `map/markers.tsx` | Cached Leaflet `divIcon`s: zone labels, incident clusters, air-quality marker |
+| `map/corridors.ts` | Main road corridors per zone (drawn when traffic is unusual) |
+| `map/MapControls.tsx` | `LayerToggles` and the collapsible `PulseLegend` |
 | `map/mapColors.ts` | Concrete colours for Leaflet SVG (CSS variables don't work there) |
-| `zone/ZonePanel.tsx` | Investigation layer for one zone (risk, explanation, metrics, relationships, chart, reports, agent trace, data sources) |
+| `zone/ZonePanel.tsx` | Zone story (status, what's happening, evidence, possible relationship, advice) + "Show the data behind this" (metrics, relationships, chart, reports, agent trace, data sources) |
 | `zone/MetricCard.tsx` | One signal: current, normal, deviation, severity, trend, sparkline, rule |
-| `zone/InsightCards.tsx` | `RiskCard` (possible impact / early warning) and `RelationshipCard` (strength meter + "Why this flag?") |
+| `zone/InsightCards.tsx` | `RelationshipCard` (strength meter + "Why this flag?") |
 | `zone/SignalChart.tsx` | 15-minute chart: rain bars + traffic / bus / AQI indexed to 100 = normal |
