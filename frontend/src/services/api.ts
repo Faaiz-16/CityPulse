@@ -49,8 +49,15 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ event, zone_id }),
     }),
-  runScenario: () =>
-    request<{ message: string }>("/api/simulation/scenario", { method: "POST", body: JSON.stringify({ name: "full" }) }),
+  runScenario: (name: string) =>
+    request<{ message: string }>("/api/simulation/scenario", { method: "POST", body: JSON.stringify({ name }) }),
+  playback: (action: "pause" | "resume" | "speed", speed?: number) =>
+    request<{ message: string }>("/api/simulation/playback", { method: "POST", body: JSON.stringify({ action, speed }) }),
+  custom: (zone_id: string, values: Record<string, number>, duration_s: number) =>
+    request<{ message: string }>("/api/simulation/custom", {
+      method: "POST",
+      body: JSON.stringify({ zone_id, values, duration_s }),
+    }),
   reset: () => request<{ message: string }>("/api/simulation/reset", { method: "POST" }),
   setFault: (feed_id: string, mode: string) =>
     request<{ message: string }>("/api/simulation/feed-fault", {

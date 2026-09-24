@@ -1,28 +1,29 @@
 @import "tailwindcss";
 
 /* ------------------------------------------------------------------ tokens
-   A dark "civic operations" palette tuned for projectors: high-contrast text,
-   status colours that stay distinguishable for common colour-vision deficiencies
-   (and are always paired with words + icons). */
+   Dark, cinematic civic palette. Status colours stay distinguishable for common
+   colour-vision deficiencies and are always paired with words and icons. */
 :root {
-  --bg: #0a0f15;
-  --panel: #111821;
-  --panel-2: #16202b;
-  --line: #233040;
-  --line-soft: #1a2430;
+  --bg: #05080d;
+  --panel: #0c1118;
+  --panel-2: #121a24;
+  --glass: rgba(10, 15, 22, 0.78);
+  --glass-strong: rgba(10, 15, 22, 0.92);
+  --line: rgba(148, 163, 184, 0.16);
+  --line-soft: rgba(148, 163, 184, 0.08);
   --text: #e8eef5;
-  --muted: #93a1b2;
+  --muted: #94a3b8;
   --faint: #64748b;
 
   --ok: #34d399;
   --ok-soft: rgba(52, 211, 153, 0.14);
   --warn: #fbbf24;
-  --warn-strong: #f59e0b;
+  --warn-strong: #fb923c;
   --warn-soft: rgba(251, 191, 36, 0.14);
   --bad: #f87171;
   --bad-soft: rgba(248, 113, 113, 0.16);
   --sim: #7dd3fc;
-  --rain: #60a5fa;
+  --rain: #38bdf8;
   --link: #c084fc;
   --pulse: #2dd4bf;
 
@@ -46,26 +47,42 @@ body {
   color: var(--text);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  overflow: hidden;
 }
 
-/* Visible keyboard focus everywhere */
 :focus-visible {
   outline: 2px solid var(--pulse);
   outline-offset: 2px;
   border-radius: 6px;
 }
 
-.panel {
-  background: color-mix(in srgb, var(--panel) 94%, transparent);
+/* Glass panels float over the map without competing with it. */
+.glass {
+  background: var(--glass);
   border: 1px solid var(--line);
   border-radius: 14px;
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+.glass-strong {
+  background: var(--glass-strong);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+/* kept for components that used the old name */
+.panel {
+  background: var(--glass);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  backdrop-filter: blur(14px);
 }
 
 .label-caps {
   font-size: 0.68rem;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
   color: var(--muted);
 }
@@ -77,51 +94,95 @@ body {
 
 /* ------------------------------------------------------------------ map */
 .leaflet-container {
-  background: #0d141c;
+  background: #070b11;
   font-family: var(--font-sans);
 }
-/* Turn the standard (light) OpenStreetMap tiles into a calm dark basemap so the
-   status colours stay the brightest thing on screen. */
+/* Standard OSM tiles turned into a deep blue-black city: streets and water stay legible,
+   but everything is quieter than the data drawn on top. */
 .leaflet-tile-pane {
-  filter: invert(1) hue-rotate(180deg) brightness(0.72) contrast(0.92) saturate(0.35);
+  filter: invert(1) hue-rotate(195deg) brightness(0.72) contrast(1.12) saturate(0.6);
+}
+.map-vignette {
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(3, 6, 10, 0.75) 100%),
+    linear-gradient(to bottom, rgba(3, 6, 10, 0.55), transparent 16%, transparent 82%, rgba(3, 6, 10, 0.6));
 }
 .leaflet-control-attribution {
-  background: rgba(10, 15, 21, 0.75) !important;
+  background: rgba(5, 8, 13, 0.6) !important;
   color: var(--faint) !important;
   font-size: 10px;
 }
 .leaflet-control-attribution a {
   color: var(--muted) !important;
 }
+.leaflet-control-zoom {
+  border: 1px solid var(--line) !important;
+  border-radius: 10px !important;
+  overflow: hidden;
+}
 .leaflet-control-zoom a {
-  background: var(--panel) !important;
+  background: var(--glass) !important;
   color: var(--text) !important;
   border-color: var(--line) !important;
 }
 .leaflet-tooltip.cp-tooltip {
-  background: var(--panel-2);
+  background: var(--glass-strong);
   color: var(--text);
   border: 1px solid var(--line);
-  border-radius: 8px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
   font-size: 12px;
-  padding: 6px 8px;
+  padding: 6px 9px;
 }
 .leaflet-tooltip.cp-tooltip::before {
   display: none;
 }
-.zone-label {
+.cp-divicon {
   background: none;
   border: none;
 }
 
-/* Red zones pulse gently: the animation tells you where to look first. */
-@keyframes cp-ring {
-  0% { transform: scale(0.6); opacity: 0.7; }
-  100% { transform: scale(1.8); opacity: 0; }
+/* Glows are reserved for things that matter (level 1–2 information). */
+.cp-glow-red {
+  filter: drop-shadow(0 0 10px rgba(248, 113, 113, 0.85));
 }
-.cp-ring {
-  animation: cp-ring 1.8s ease-out infinite;
+.cp-glow-amber {
+  filter: drop-shadow(0 0 6px rgba(251, 191, 36, 0.6));
+}
+.cp-rain-drop {
+  filter: drop-shadow(0 0 5px rgba(56, 189, 248, 0.95));
+}
+.cp-traffic-hot {
+  filter: drop-shadow(0 0 6px rgba(248, 113, 113, 0.9));
+}
+.cp-traffic-warm {
+  filter: drop-shadow(0 0 4px rgba(251, 146, 60, 0.7));
+}
+.cp-haze {
+  filter: blur(14px);
+}
+
+/* A disrupted zone "breathes": the only continuous animation on the map. */
+@keyframes cp-breathe {
+  0%, 100% { stroke-opacity: 1; fill-opacity: 0.2; }
+  50% { stroke-opacity: 0.55; fill-opacity: 0.3; }
+}
+.cp-zone-red {
+  animation: cp-breathe 2.4s ease-in-out infinite;
+}
+
+@keyframes cp-heart {
+  0%, 60%, 100% { transform: scale(1); }
+  15% { transform: scale(1.22); }
+  30% { transform: scale(0.95); }
+  45% { transform: scale(1.1); }
+}
+.cp-heart {
+  animation-name: cp-heart;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+  transform-origin: center;
 }
 
 @keyframes cp-fade-in {
@@ -129,13 +190,30 @@ body {
   to { opacity: 1; transform: none; }
 }
 .cp-fade-in {
-  animation: cp-fade-in 0.35s ease-out;
+  animation: cp-fade-in 0.3s ease-out;
+}
+
+@keyframes cp-slide-left {
+  from { opacity: 0; transform: translateX(-16px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes cp-slide-right {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: none; }
+}
+.cp-slide-left { animation: cp-slide-left 0.25s ease-out; }
+.cp-slide-right { animation: cp-slide-right 0.25s ease-out; }
+
+input[type="range"].cp-range {
+  accent-color: var(--pulse);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cp-ring,
+  .cp-zone-red,
+  .cp-heart,
   .cp-fade-in,
-  .cp-pulse-line {
+  .cp-slide-left,
+  .cp-slide-right {
     animation: none !important;
   }
 }

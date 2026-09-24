@@ -1,6 +1,6 @@
 import {
-  AlertTriangle,
   Bus,
+  CarFront,
   Car,
   CheckCircle2,
   CircleAlert,
@@ -50,18 +50,7 @@ export const STRENGTH_META: Record<Strength, { color: string; bars: number; word
   strong: { color: "var(--link)", bars: 3, word: "Strong" },
 };
 
-// Icons for issue types and metrics (keys come from the backend metric catalogue).
-export const ISSUE_ICONS: Record<string, LucideIcon> = {
-  rain: CloudRain,
-  traffic: Car,
-  transit: Bus,
-  air: Wind,
-  water: Waves,
-  incident: FileWarning,
-  temp: Thermometer,
-  outage: Zap,
-};
-
+// Icons for metrics (keys come from the backend metric catalogue).
 export const METRIC_ICONS: Record<string, LucideIcon> = {
   rain_mm_h: CloudRain,
   congestion_pct: Car,
@@ -71,17 +60,7 @@ export const METRIC_ICONS: Record<string, LucideIcon> = {
   incident_reports: FileWarning,
   waterlogging_reports: Droplets,
   outage_signal_reports: Zap,
+  accident_reports: CarFront,
   temperature_c: Thermometer,
   avg_speed_kmh: Gauge,
 };
-
-export const ISSUE_WORDS: Record<string, string> = {
-  rain: "Rain",
-  traffic: "Traffic",
-  transit: "Buses",
-  air: "Air quality",
-  water: "Flooding",
-  incident: "Reports",
-};
-
-export const ALERT_ICON = AlertTriangle;

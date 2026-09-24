@@ -1,33 +1,7 @@
-import { ChevronDown, Link2, OctagonAlert, ShieldAlert } from "lucide-react";
+import { ChevronDown, Link2 } from "lucide-react";
 import { useState } from "react";
-import type { Relationship, RiskInsight } from "../../types";
+import type { Relationship } from "../../types";
 import { STRENGTH_META } from "../../utils/status";
-
-export function RiskCard({ risk }: { risk: RiskInsight }) {
-  const high = risk.level === "high";
-  const color = high ? "var(--bad)" : "var(--warn)";
-  const Icon = high ? OctagonAlert : ShieldAlert;
-  return (
-    <div className="rounded-xl p-3.5" style={{ border: `1px solid ${color}`, background: `color-mix(in srgb, ${color} 9%, transparent)` }}>
-      <div className="flex items-center gap-2">
-        <Icon size={16} color={color} aria-hidden />
-        <span className="label-caps" style={{ color }}>
-          {risk.kind === "potential_disruption" ? "Possible impact" : "Early warning"}
-        </span>
-      </div>
-      <p className="mt-1 text-[15px] font-semibold leading-snug">{risk.headline}</p>
-      <ul className="mt-2 space-y-0.5 text-[12.5px] text-[var(--muted)]">
-        {risk.evidence.map((e) => (
-          <li key={e}>• {e}</li>
-        ))}
-      </ul>
-      <p className="mt-2 rounded-lg px-2.5 py-1.5 text-[12.5px]" style={{ background: "var(--panel-2)" }}>
-        <span className="font-semibold">For residents: </span>
-        {risk.resident_advice}
-      </p>
-    </div>
-  );
-}
 
 function StrengthMeter({ strength }: { strength: Relationship["strength"] }) {
   const meta = STRENGTH_META[strength];

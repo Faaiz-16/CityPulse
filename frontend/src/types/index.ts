@@ -160,11 +160,39 @@ export interface ScenarioStage {
   key: string;
   label: string;
   reached_at: string | null;
+  t_plus_s?: number | null;
+  expected_at_s?: number | null;
+}
+
+export interface ScenarioPreset {
+  id: string;
+  name: string;
+  tagline: string;
+  zone_id: string;
+  severity: "high" | "moderate" | "low";
+  duration_s: number;
+  feeds: string[];
+  expected: string;
+  icon: string;
+  storyline: { key: string; label: string; expected_at_s: number }[];
 }
 
 export interface SimulationStatus {
   active_events: { event: string; label: string; zone_id: string; started_at: string; ends_at: string; level: number }[];
-  scenario: { name: string; focus_zone: string; started_at: string; elapsed_s: number; stages: ScenarioStage[] } | null;
+  scenario: {
+    id: string;
+    name: string;
+    focus_zone: string;
+    expected: string;
+    started_at: string;
+    elapsed_s: number;
+    complete: boolean;
+    stages: ScenarioStage[];
+  } | null;
+  clock: { paused: boolean; speed: number };
+  custom: { zone_id: string; values: Record<string, number>; duration_s: number } | null;
+  presets: ScenarioPreset[];
+  custom_controls: string[];
   available_events: { id: string; label: string }[];
 }
 

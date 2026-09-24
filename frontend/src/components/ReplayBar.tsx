@@ -18,7 +18,7 @@ export function ReplayBar({ replay, zones }: { replay: ReplayControls; zones: Zo
   const pct = (i: number) => (frames.length > 1 ? (i / (frames.length - 1)) * 100 : 0);
 
   return (
-    <div className="panel pointer-events-auto w-full p-3" role="region" aria-label="Historical replay controls">
+    <div className="glass pointer-events-auto w-full p-3" role="region" aria-label="Historical replay controls">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <span
           className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-bold tracking-wide"
