@@ -22,12 +22,14 @@ interface Props {
   onClose: () => void;
   onChanged: () => void;
   onStartReplay: () => void;
-  onShow: (zoneId: string | null) => void; // a situation is ready: show it on the map
+  onShow: (zoneId: string | null, watch?: boolean) => void; // a situation is ready: show it on the map
+  stepByStep: boolean; // kept by the app, so the choice survives closing the drawer
+  onStepByStepChange: (on: boolean) => void;
   districtNames: Record<string, string>; // "C2" → "Walled City"
 }
 
 /** Everything needed to *create* a situation: scenarios, custom sliders, feed failures. */
-export function DemoDrawer({ sim, zones, feeds, onClose, onChanged, onStartReplay, onShow, districtNames }: Props) {
+export function DemoDrawer({ sim, zones, feeds, onClose, onChanged, onStartReplay, onShow, districtNames, stepByStep, onStepByStepChange }: Props) {
   const [tab, setTab] = useState<Tab>("scenarios");
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<{ text: string; error?: boolean } | null>(null);
@@ -66,7 +68,8 @@ export function DemoDrawer({ sim, zones, feeds, onClose, onChanged, onStartRepla
       </div>
 
       <div className="space-y-4 p-4">
-        {tab === "scenarios" && <ScenariosTab sim={sim} zones={zones} busy={busy} act={act} onStartReplay={onStartReplay} onShow={onShow} />}
+        {tab === "scenarios" && <ScenariosTab sim={sim} zones={zones} busy={busy} act={act} onStartReplay={onStartReplay} onShow={onShow}
+          stepByStep={stepByStep} onStepByStepChange={onStepByStepChange} />}
         {tab === "custom" && <CustomTab sim={sim} zones={zones} districtNames={districtNames} busy={!!busy} act={act} onShow={onShow} />}
         {tab === "feeds" && <FeedsTab feeds={feeds} busy={!!busy} act={act} />}
         {busy && (
@@ -86,17 +89,19 @@ type Act = (fn: () => Promise<{ message: string }>, label?: string) => Promise<u
 
 // ------------------------------------------------------------------ scenarios
 
-function ScenariosTab({ sim, zones, busy, act, onStartReplay, onShow }: {
-  sim: SimulationStatus; zones: ZoneState[]; busy: string | null; act: Act; onStartReplay: () => void; onShow: (id: string | null) => void;
+function ScenariosTab({ sim, zones, busy, act, onStartReplay, onShow, stepByStep, onStepByStepChange }: {
+  sim: SimulationStatus; zones: ZoneState[]; busy: string | null; act: Act; onStartReplay: () => void;
+  onShow: (id: string | null, watch?: boolean) => void; stepByStep: boolean; onStepByStepChange: (on: boolean) => void;
 }) {
-  const [stepByStep, setStepByStep] = useState(false);
   const run = async (p: ScenarioPreset) => {
     const label = stepByStep ? `Starting ${p.name}…` : `Setting up ${p.name} in ${p.place}…`;
-    if (await act(() => api.runScenario(p.id, !stepByStep), label)) onShow(p.zone_id);
+    if (await act(() => api.runScenario(p.id, !stepByStep), label)) onShow(p.zone_id, stepByStep);
   };
   return (
     <>
-      {sim.scenario && <NowShowing sim={sim} zones={zones} busy={!!busy} act={act} />}
+      {sim.scenario && (
+        <NowShowing key={`${sim.scenario.id}|${sim.scenario.started_at}`} sim={sim} zones={zones} busy={!!busy} act={act} />
+      )}
 
       <div>
         <h3 className="label-caps mb-2">Choose a situation</h3>
@@ -126,7 +131,7 @@ function ScenariosTab({ sim, zones, busy, act, onStartReplay, onShow }: {
           })}
         </div>
         <label className="mt-3 flex cursor-pointer items-center gap-2 text-[12px] text-[var(--muted)]">
-          <input type="checkbox" checked={stepByStep} onChange={(e) => setStepByStep(e.target.checked)} className="cp-range" />
+          <input type="checkbox" checked={stepByStep} onChange={(e) => onStepByStepChange(e.target.checked)} className="cp-range" />
           Play step by step instead (watch it build up over ~2 minutes)
         </label>
       </div>
@@ -142,8 +147,8 @@ function ScenariosTab({ sim, zones, busy, act, onStartReplay, onShow }: {
 
 /** What's on the map now, and — on request — how CityPulse detected it, step by step. */
 function NowShowing({ sim, zones, busy, act }: { sim: SimulationStatus; zones: ZoneState[]; busy: boolean; act: Act }) {
-  const [open, setOpen] = useState(false);
   const sc = sim.scenario!;
+  const [open, setOpen] = useState(!sc.complete); // playing live: show the steps as they tick
   const focus = zones.find((z) => z.id === sc.focus_zone);
   const stages = [...sc.stages].sort((a, b) => {
     if (a.reached_at && b.reached_at) return a.reached_at.localeCompare(b.reached_at);
@@ -154,8 +159,16 @@ function NowShowing({ sim, zones, busy, act }: { sim: SimulationStatus; zones: Z
   const done = sc.stages.filter((s) => s.reached_at).length;
   return (
     <section className="rounded-xl p-3" style={{ background: "rgba(45,212,191,0.07)", border: "1px solid rgba(45,212,191,0.35)" }} aria-label="Current situation">
-      <div className="label-caps" style={{ color: "var(--pulse)" }}>{sim.clock.paused ? "Paused" : "Now showing"}</div>
+      <div className="flex items-center gap-2">
+        <span className="label-caps" style={{ color: "var(--pulse)" }}>
+          {sim.clock.paused ? "Paused" : sc.complete ? "Now showing" : "Playing step by step"}
+        </span>
+        {!sc.complete && <span className="ml-auto font-mono text-[12px] text-[#cbd5e1]">{sc.elapsed_s} s</span>}
+      </div>
       <div className="mt-0.5 text-[15px] font-semibold">{sc.name}</div>
+      {!sc.complete && done === 0 && (
+        <p className="mt-1 text-[12px] text-[var(--muted)]">Starting from a calm city — the first signs appear after about 25 seconds.</p>
+      )}
       {focus && (
         <p className="mt-1 text-[12.5px]">
           <span className="font-semibold" style={{ color: STATUS_META[focus.status].color }}>{focus.short_name}: {focus.status_label}</span>

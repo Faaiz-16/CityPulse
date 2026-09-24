@@ -27,7 +27,9 @@ interface Props {
   sensors: Sensor[];
   layers: MapLayers;
   selectedZone: string | null;
+  focusZone?: string | null; // frame this block without selecting it (a step-by-step demo)
   panelOpen: boolean;
+  leftPanelOpen?: boolean; // a left drawer covers part of the map
   onSelectZone: (id: string | null) => void;
 }
 
@@ -58,13 +60,15 @@ function useStable<T>(value: T): T {
 }
 
 /** Frame the whole city, or — when a block is selected — that block and its neighbours beside the panel. */
-function Framing({ grid, selectedZone, panelOpen }: { grid: Grid; selectedZone: string | null; panelOpen: boolean }) {
+function Framing({ grid, selectedZone, panelOpen, leftPanelOpen }: {
+  grid: Grid; selectedZone: string | null; panelOpen: boolean; leftPanelOpen: boolean;
+}) {
   const map = useMap();
   useEffect(() => {
     const wide = map.getSize().x >= 900;
     if (selectedZone) {
       map.flyToBounds(L.latLngBounds(blockBounds(grid, selectedZone)).pad(1.3), {
-        paddingTopLeft: [40, 80],
+        paddingTopLeft: [wide && leftPanelOpen ? 440 : 40, 80],
         paddingBottomRight: [wide && panelOpen ? 420 : 40, SMALL && panelOpen ? 300 : 40],
         maxZoom: 14.5,
         duration: 0.6,
@@ -76,7 +80,7 @@ function Framing({ grid, selectedZone, panelOpen }: { grid: Grid; selectedZone: 
         duration: 0.6,
       });
     }
-  }, [grid, selectedZone, panelOpen, map]);
+  }, [grid, selectedZone, panelOpen, leftPanelOpen, map]);
   return null;
 }
 
@@ -400,7 +404,7 @@ function FragmentGroup({ children }: { children: React.ReactNode }) {
 
 // -------------------------------------------------------------------- map
 
-export function CityMap({ boundaries, mapInfo, zones, sensors, layers, selectedZone, panelOpen, onSelectZone }: Props) {
+export function CityMap({ boundaries, mapInfo, zones, sensors, layers, selectedZone, focusZone = null, panelOpen, leftPanelOpen = false, onSelectZone }: Props) {
   const grid = mapInfo?.grid ?? null;
 
   // Everything drawn is derived into small plain lists; each stays the same object while its
@@ -476,7 +480,8 @@ export function CityMap({ boundaries, mapInfo, zones, sensors, layers, selectedZ
       <LabelScale />
       {grid && (
         <>
-          <Framing grid={grid} selectedZone={selectedZone} panelOpen={panelOpen} />
+          <Framing grid={grid} selectedZone={selectedZone ?? focusZone} panelOpen={panelOpen}
+            leftPanelOpen={!selectedZone && !!focusZone && leftPanelOpen} />
           {layers.air && <AirLayer grid={grid} air={air} badges={badges} />}
           {layers.rain && <RainLayer grid={grid} rain={rain} />}
           <BlockTints grid={grid} tints={tints} selected={selectedZone} />

@@ -38,6 +38,10 @@ export default function App() {
   const sensors = usePolling(layers.sensors && !replay.active ? api.sensors : null, 5000);
   const [selectedZone, setSelectedZone] = useState<string | null>(INITIAL_ZONE);
   const [drawer, setDrawer] = useState<LeftDrawer>(INITIAL_DRAWER);
+  // Demo: "play step by step" is remembered while the drawer opens and closes; a step-by-step
+  // situation is framed on the map (focusZone) while the drawer stays open to show its progress.
+  const [stepByStep, setStepByStep] = useState(false);
+  const [focusZone, setFocusZone] = useState<string | null>(null);
   const wallNow = useNow();
 
   const refreshAll = useCallback(() => {
@@ -53,8 +57,15 @@ export default function App() {
   }, [refreshAll]);
   const closeZone = useCallback(() => setSelectedZone(null), []);
   const closeDrawer = useCallback(() => setDrawer(null), []);
-  // A demo situation is ready: close the drawer and take the viewer straight to it.
-  const showSituation = useCallback((zoneId: string | null) => {
+  // A demo situation is ready. Instant: close the drawer and open the block straight away.
+  // Step by step: keep the drawer open (its steps tick live) and frame the block on the map.
+  const showSituation = useCallback((zoneId: string | null, watch = false) => {
+    if (watch) {
+      setSelectedZone(null);
+      setFocusZone(zoneId);
+      return;
+    }
+    setFocusZone(null);
     setDrawer(null);
     setSelectedZone(zoneId);
   }, []);
@@ -109,7 +120,7 @@ export default function App() {
       {/* The map is the hero: full-bleed, everything else floats over it. */}
       <div className="absolute inset-0">
         <CityMap boundaries={boundaries.data ?? []} mapInfo={mapInfo.data} zones={state.zones} sensors={sensors.data ?? []} layers={layers}
-          selectedZone={selectedZone} panelOpen={!!zone} onSelectZone={setSelectedZone} />
+          selectedZone={selectedZone} focusZone={focusZone} panelOpen={!!zone} leftPanelOpen={!!drawer} onSelectZone={setSelectedZone} />
       </div>
       <div className="map-vignette absolute inset-0 z-[400]" aria-hidden />
 
@@ -147,7 +158,8 @@ export default function App() {
           <div className="absolute bottom-3 left-3 top-[76px] flex max-w-[calc(100%-24px)]">
             {drawer === "demo" && !inReplay && (
               <DemoDrawer sim={sim} zones={state.zones} feeds={state.feeds} onClose={closeDrawer} onChanged={refreshAll}
-                onStartReplay={startReplay} onShow={showSituation} districtNames={districtNames} />
+                onStartReplay={startReplay} onShow={showSituation} districtNames={districtNames}
+                stepByStep={stepByStep} onStepByStepChange={setStepByStep} />
             )}
             {drawer === "insights" && (
               <InsightsDrawer state={state} timeline={timeline.data ?? []} now={now}
