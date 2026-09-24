@@ -94,6 +94,18 @@ export interface ZoneState {
   incident_counts: Record<string, number>;
   recent_incidents: IncidentView[];
   anchor: [number, number];
+  predictions: Prediction[]; // possible next impacts here (a forecast, not a certainty)
+}
+
+export interface Prediction {
+  kind: "flooding" | "power_cut" | "traffic" | "bus_delays" | "air_quality";
+  label: string;
+  likelihood: "low" | "medium" | "high";
+  score: number;
+  horizon: string;
+  reason: string;
+  source_zone: string;
+  nearby: boolean;
 }
 
 export interface FeedHealth {

@@ -78,6 +78,10 @@ Full details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   timing that fits. Strength scored and shown. Weak evidence is labelled *insufficient*.
 - **Early warnings.** "Traffic may slow in Walled City (C2-9)" fires when rain is heavy and traffic is
   climbing — *before* it crosses its threshold.
+- **What may happen next.** From what is happening now, CityPulse shows the likely knock-on
+  impacts here and in neighbouring blocks — e.g. heavy rain → possible flash flooding and power
+  cuts nearby — each with a low / medium / high chance, a rough time frame and what it is based
+  on. Calm blocks at risk get a dashed violet outline on the map (the "Outlook" layer).
 - **Demo drawer.** Eight realistic scenario presets (heavy rain, flash flood, congestion,
   accident, power outage, poor air, severe storm, multi-event) that unfold over time with
   pause and 1×/2×/4×; a live storyline ticks each beat only when the analysis detects it.
@@ -239,7 +243,7 @@ backend/
     simulation/     scenario presets, scenario clock, custom scenarios, history, replay
     services/       pipeline, feed manager, rolling store, persistence
     geo/            Jaipur districts (5 × 5) and blocks (3 × 3 each), names, main roads (OSM)
-  tests/            121 tests (normalization, analysis, resilience, AI, agent, scenarios, replay, API)
+  tests/            128 tests (normalization, analysis, forecast, resilience, AI, agent, scenarios, replay, API)
 frontend/
   src/
     components/     Header, AlertsCard, map/ (grid, layers, legend), zone/ (area panel), drawers/ (Demo, Insights)

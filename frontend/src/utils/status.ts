@@ -15,7 +15,18 @@ import {
   Wind,
   Zap,
 } from "lucide-react";
-import type { FeedStatusValue, Severity, Strength, ZoneStatus } from "../types";
+import type { FeedStatusValue, Prediction, Severity, Strength, ZoneStatus } from "../types";
+
+// Possible next impacts (forecast). One colour for "not happening yet", an icon per kind.
+export const FORECAST_COLOR = "#a78bfa";
+export const PREDICTION_ICON: Record<Prediction["kind"], LucideIcon> = {
+  flooding: Waves,
+  power_cut: Zap,
+  traffic: CarFront,
+  bus_delays: Bus,
+  air_quality: Wind,
+};
+export const CHANCE_WORD: Record<Prediction["likelihood"], string> = { low: "Low chance", medium: "Medium chance", high: "High chance" };
 
 // Status is never shown by colour alone: every use pairs the colour with a word and an icon.
 export const STATUS_META: Record<ZoneStatus, { color: string; soft: string; word: string; icon: LucideIcon }> = {

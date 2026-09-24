@@ -82,7 +82,12 @@ The single structured civic state — the source of truth for the map, dashboard
 
 **`ZoneState`** fields: `id, number, name, short_name, status (GREEN|YELLOW|RED), status_label,
 headline, issue_types[], metrics{}, anomalies[], relationships[], risks[],
-insufficient_evidence[], cannot_assess[], incident_counts{}, recent_incidents[], anchor`.
+insufficient_evidence[], cannot_assess[], incident_counts{}, recent_incidents[], anchor, predictions[]`.
+
+`predictions[]` — possible next impacts for the block (a forecast, not a certainty):
+`{kind: flooding|power_cut|traffic|bus_delays|air_quality, label, likelihood: low|medium|high, score,
+horizon ("next 30–60 min"), reason ("Based on rain at 26 mm/h in a neighbouring block (Walled City)."),
+source_zone, nearby}`. Empty for a block with nothing to watch.
 
 **`metrics[key]`** (one per signal) — everything needed to explain "how unusual":
 

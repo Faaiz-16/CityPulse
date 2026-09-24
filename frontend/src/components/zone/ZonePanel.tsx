@@ -6,7 +6,7 @@ import { useCallback, useState } from "react";
 import { usePolling } from "../../hooks/usePolling";
 import type { FeedHealth, ZoneDetail, ZoneState } from "../../types";
 import { agoText, clockTime } from "../../utils/format";
-import { isHealthyFeed, STATUS_META, STRENGTH_META } from "../../utils/status";
+import { CHANCE_WORD, FORECAST_COLOR, isHealthyFeed, PREDICTION_ICON, STATUS_META, STRENGTH_META } from "../../utils/status";
 import { Drawer } from "../drawers/Drawer";
 import { SourceTag } from "../SummaryPanel";
 import { StatusBadge } from "../ui/StatusBadge";
@@ -103,11 +103,35 @@ function SimpleView({ zone, district, onClose, onExplain }: Props & { onExplain:
           </div>
         )}
 
+        {zone.predictions?.length > 0 && (
+          <div>
+            <h3 className="label-caps mb-2" style={{ color: FORECAST_COLOR }}>What may happen next</h3>
+            <ul className="space-y-2">
+              {zone.predictions.slice(0, 3).map((p) => {
+                const Icon = PREDICTION_ICON[p.kind];
+                return (
+                  <li key={p.kind} className="flex items-center gap-3">
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg" style={{ border: `1px dashed ${FORECAST_COLOR}` }}>
+                      <Icon size={16} color={FORECAST_COLOR} aria-hidden />
+                    </span>
+                    <span className="leading-tight">
+                      <span className="block text-[15px]">{p.label}</span>
+                      <span className="text-[12px] text-[var(--muted)]">{CHANCE_WORD[p.likelihood]} · {p.horizon}</span>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+
         <div>
           <h3 className="label-caps mb-1.5">What to do</h3>
           <p className="flex gap-2 text-[15px] leading-snug">
             <Users size={17} className="mt-0.5 shrink-0 text-[var(--pulse)]" aria-hidden />
-            {advice ?? (zone.status === "GREEN" ? "No action needed." : "Nothing to do yet — CityPulse is keeping an eye on it.")}
+            {advice ?? (zone.predictions?.some((p) => p.likelihood !== "low")
+              ? "Nothing yet — but be prepared: conditions nearby may reach this block soon."
+              : zone.status === "GREEN" ? "No action needed." : "Nothing to do yet — CityPulse is keeping an eye on it.")}
           </p>
         </div>
 
@@ -187,6 +211,29 @@ function DetailedView({ zone, feeds, now, loadDetail, onClose, onBack }: Props &
           {zone.cannot_assess.map((n) => (
             <p key={n} className="mt-2 flex gap-2 text-[12.5px] text-[var(--warn)]"><Info size={14} className="mt-0.5 shrink-0" aria-hidden />{n}</p>
           ))}
+        </Block>
+      )}
+
+      {zone.predictions?.length > 0 && (
+        <Block title="What may happen next" tag={<span className="text-[10.5px]" style={{ color: FORECAST_COLOR }}>Forecast · not certain</span>}>
+          <ul className="space-y-2 text-[13px]">
+            {zone.predictions.map((p) => {
+              const Icon = PREDICTION_ICON[p.kind];
+              return (
+                <li key={p.kind} className="flex gap-2.5">
+                  <Icon size={15} className="mt-0.5 shrink-0" color={FORECAST_COLOR} aria-hidden />
+                  <span>
+                    <span className="font-semibold">{p.label}</span>
+                    <span className="text-[var(--muted)]"> — {CHANCE_WORD[p.likelihood].toLowerCase()}, {p.horizon}</span>
+                    <span className="block text-[12px] text-[var(--muted)]">{p.reason}</span>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="mt-2 text-[11.5px] italic text-[var(--muted)]">
+            Based on how these situations usually develop — a possibility, not a certainty.
+          </p>
         </Block>
       )}
 

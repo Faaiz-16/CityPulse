@@ -21,6 +21,7 @@ from app.analysis.anomaly import (
 )
 from app.analysis.baseline import BaselineModel
 from app.analysis.correlation import ZoneSignals, evaluate_zone, window_bins
+from app.analysis.forecast import predict
 from app.analysis.metrics import (
     CONTINUOUS_METRICS,
     DERIVED_INCIDENT_METRICS,
@@ -59,6 +60,7 @@ _SHORT_PHRASE = {
 }
 
 _SEV_RANK = {"none": 0, "low": 1, "moderate": 2, "high": 3}
+_INDEX = {z.id: i for i, z in enumerate(ZONES)}
 
 
 def describe_anomaly(m: MetricAssessment) -> str:
@@ -85,6 +87,9 @@ class AnalysisEngine:
     def analyze(self, store: ReadingStore, now: datetime, feed_intervals: dict[str, float],
                 incidents_available: bool = True) -> tuple[list[ZoneState], PulseInfo]:
         zones = [self._analyze_zone(z, store, now, feed_intervals, incidents_available) for z in ZONES]
+        # What may happen next — needs every block, because impacts reach neighbouring blocks.
+        for zone_id, predictions in predict(zones, self.s).items():
+            zones[_INDEX[zone_id]].predictions = predictions
         return zones, self.pulse(zones)
 
     @staticmethod

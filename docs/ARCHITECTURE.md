@@ -229,6 +229,29 @@ Early warnings address the brief's pain point "alerts are reactive, not predicti
 
 Status is always shown as **colour + icon + word**, never colour alone.
 
+### Predictive impact — what may happen next (`analysis/forecast.py`)
+
+After every block is analysed, well-known knock-on effects turn what is unusual *now* into
+possible impacts *next*, in the same block and (more weakly) the 8 neighbouring blocks:
+
+| Observed | Possible next — here | Possible next — neighbouring blocks |
+|---|---|---|
+| Heavy rain | flash flooding, power cuts, slower traffic, bus delays | flash flooding, power cuts, slower traffic |
+| Rising street water | flash flooding, slower traffic, power cuts, bus delays | flash flooding, slower traffic |
+| Waterlogging reports | slower traffic, bus delays, power cuts | flash flooding, slower traffic |
+| Heavy traffic | bus delays, worse air | slower traffic |
+| Road-accident reports | slower traffic, bus delays | slower traffic |
+| Power / signal outages | slower traffic (dark signals), bus delays | power cuts, slower traffic |
+| Poor air | — | worse air |
+
+Each prediction's score is the driver's strength (e.g. rain intensity, anomaly severity) × the
+rule's weight; it is shown as a **low / medium / high chance** with a rough time horizon and the
+observed conditions it is based on. Impacts already being measured in a block are not predicted
+there, and worse air is not predicted where it is raining (rain washes particles out). On the
+map, calm blocks with a medium/high chance get a dashed violet outline and the impact's icon
+("Outlook" layer); every block's panel lists "What may happen next". Predictions are labelled as
+possibilities, never as causes or certainties.
+
 ## 10. Feed resilience (`services/feed_manager.py`)
 
 ```

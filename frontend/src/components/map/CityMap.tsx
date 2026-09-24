@@ -4,15 +4,16 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import {
   CircleMarker, MapContainer, Marker, Polyline, Rectangle, TileLayer, Tooltip, useMap, useMapEvents, ZoomControl,
 } from "react-leaflet";
-import type { IncidentView, MapInfo, Road, Sensor, ZoneBoundary, ZoneState } from "../../types";
+import type { IncidentView, MapInfo, Prediction, Road, Sensor, ZoneBoundary, ZoneState } from "../../types";
 import { clockTime, num, pct } from "../../utils/format";
 import { scatterInRect, type LatLon } from "../../utils/geo";
 import { hotspots, parseRef, refOf, SIZE } from "../../utils/grid";
-import { STATUS_META } from "../../utils/status";
+import { CHANCE_WORD, FORECAST_COLOR, STATUS_META } from "../../utils/status";
 import { HAZE, INCIDENT_KINDS, MAP_STATUS, MINOR_REPORT, RAIN, RAIN_LIGHT, SENSOR_COLORS, TRAFFIC_HOT, TRAFFIC_WARM } from "./mapColors";
-import { airIcon, districtIcon, gridRefIcon, hotspotLabelIcon, incidentIcon, placeLabelIcon } from "./markers";
+import { airIcon, districtIcon, forecastIcon, gridRefIcon, hotspotLabelIcon, incidentIcon, placeLabelIcon } from "./markers";
 
 export interface MapLayers {
+  forecast: boolean;
   rain: boolean;
   traffic: boolean;
   reports: boolean;
@@ -210,10 +211,12 @@ function GridEvents({ grid, zones, onSelectZone }: { grid: Grid; zones: ZoneStat
       t.remove();
       return;
     }
+    const next = z.predictions?.[0];
     t.setContent(`<strong>${escapeHtml(z.short_name)}</strong> <span style="color:#94a3b8">· ${z.id}</span><br>`
-      + `<span style="color:${MAP_STATUS[z.status]}">${STATUS_META[z.status].word}</span>`);
+      + `<span style="color:${MAP_STATUS[z.status]}">${STATUS_META[z.status].word}</span>`
+      + (next ? `<br><span style="color:${FORECAST_COLOR}">Next: ${escapeHtml(next.label)} · ${CHANCE_WORD[next.likelihood].toLowerCase()}</span>` : ""));
     if (!map.hasLayer(t)) t.addTo(map);
-  }, [map, z?.id, z?.short_name, z?.status]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [map, z?.id, z?.short_name, z?.status, z?.predictions?.[0]?.label, z?.predictions?.[0]?.likelihood]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!z) return null;
   return (
@@ -355,6 +358,32 @@ const AirLayer = memo(function AirLayer({ grid, air, badges }: {
   );
 });
 
+/**
+ * Possible next impacts: blocks that are still calm but where medium/high-chance impacts are
+ * expected get a dashed violet outline and the impact's icon — "watch this area next".
+ * Blocks that are already unusual show their outlook in the block panel instead.
+ */
+const ForecastLayer = memo(function ForecastLayer({ grid, outlook }: {
+  grid: Grid; outlook: { id: string; kind: Prediction["kind"]; likelihood: Prediction["likelihood"] }[];
+}) {
+  return (
+    <>
+      {outlook.map((o) => {
+        const b = blockBounds(grid, o.id);
+        return (
+          <FragmentGroup key={o.id}>
+            <Rectangle bounds={b} interactive={false}
+              pathOptions={{ color: FORECAST_COLOR, weight: 1.2, opacity: o.likelihood === "high" ? 0.8 : 0.55, dashArray: "4 4",
+                fillColor: FORECAST_COLOR, fillOpacity: o.likelihood === "high" ? 0.08 : 0.04 }} />
+            <Marker position={[(b[0][0] + b[1][0]) / 2, (b[0][1] + b[1][1]) / 2]} icon={forecastIcon(o.kind, o.likelihood)}
+              interactive={false} keyboard={false} />
+          </FragmentGroup>
+        );
+      })}
+    </>
+  );
+});
+
 const SENSOR_LABEL: Record<string, string> = {
   traffic: "Traffic sensor", rain_gauge: "Rain gauge", air_quality: "Air monitor", water_level: "Water-level sensor",
 };
@@ -442,6 +471,9 @@ export function CityMap({ boundaries, mapInfo, zones, sensors, layers, selectedZ
   }, [zones]);
   const reports = useStable(reportData);
   const spots = useMemo(() => hotspots(zones), [zones]);
+  const outlook = useStable(zones
+    .filter((z) => z.status === "GREEN" && z.predictions?.some((p) => p.likelihood !== "low"))
+    .map((z) => ({ id: z.id, kind: z.predictions[0].kind, likelihood: z.predictions[0].likelihood })));
   const air = useStable(zones.filter((z) => z.metrics.aqi?.is_anomaly && z.metrics.aqi.current !== null).map((z) => z.id));
   const badges = useStable(spots.flatMap((h) => {
     const bad = h.cells.filter((z) => z.metrics.aqi?.is_anomaly && z.metrics.aqi.current !== null)
@@ -482,6 +514,7 @@ export function CityMap({ boundaries, mapInfo, zones, sensors, layers, selectedZ
         <>
           <Framing grid={grid} selectedZone={selectedZone ?? focusZone} panelOpen={panelOpen}
             leftPanelOpen={!selectedZone && !!focusZone && leftPanelOpen} />
+          {layers.forecast && <ForecastLayer grid={grid} outlook={outlook} />}
           {layers.air && <AirLayer grid={grid} air={air} badges={badges} />}
           {layers.rain && <RainLayer grid={grid} rain={rain} />}
           <BlockTints grid={grid} tints={tints} selected={selectedZone} />

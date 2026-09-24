@@ -69,7 +69,7 @@ source .venv/bin/activate
 python -m pytest -q
 ```
 
-Expected: `121 passed` in about 4 minutes. Tests use a temporary database and a simulated clock,
+Expected: `128 passed` in about 4 minutes. Tests use a temporary database and a simulated clock,
 so they are deterministic; the first test builds history for the 225 Jaipur blocks (~25 s).
 
 The first backend start does the same (~25 s, once); later starts reuse the stored history.

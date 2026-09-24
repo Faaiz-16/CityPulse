@@ -33,7 +33,7 @@ export default function App() {
   const boundaries = usePolling(api.zones, 60000);
   const mapInfo = usePolling(api.map, 3_600_000); // grid + main roads: static
   const timeline = usePolling(api.timeline, 15000);
-  const [layers, setLayers] = useState<MapLayers>({ rain: true, traffic: true, reports: true, air: true, sensors: false });
+  const [layers, setLayers] = useState<MapLayers>({ forecast: true, rain: true, traffic: true, reports: true, air: true, sensors: false });
   const replay = useReplay(INITIAL_REPLAY ? INITIAL_FRAME : null);
   const sensors = usePolling(layers.sensors && !replay.active ? api.sensors : null, 5000);
   const [selectedZone, setSelectedZone] = useState<string | null>(INITIAL_ZONE);

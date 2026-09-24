@@ -1,7 +1,8 @@
 import L from "leaflet";
 import { CarFront, CheckCircle2, CircleAlert, Droplets, OctagonAlert, TreePine, Wind, Zap, type LucideIcon } from "lucide-react";
 import { renderToStaticMarkup } from "react-dom/server";
-import type { ZoneState } from "../../types";
+import type { Prediction, ZoneState } from "../../types";
+import { FORECAST_COLOR, PREDICTION_ICON } from "../../utils/status";
 import { MAP_STATUS } from "./mapColors";
 
 // Leaflet markers live outside React's tree, so their contents are built as static HTML.
@@ -96,6 +97,22 @@ export function incidentIcon(kind: string, color: string, count: number): L.DivI
             {count > 99 ? "99+" : count}
           </div>
         )}
+      </div>,
+    );
+    return L.divIcon({ html, className: "cp-divicon", iconSize: [0, 0] });
+  });
+}
+
+/** Possible next impact on a block: a dashed ring with the impact's icon (a forecast, not an event). */
+export function forecastIcon(kind: Prediction["kind"], likelihood: Prediction["likelihood"]): L.DivIcon {
+  return cached(`fc|${kind}|${likelihood}`, () => {
+    const Icon = PREDICTION_ICON[kind];
+    const strong = likelihood === "high";
+    const html = renderToStaticMarkup(
+      <div className="cp-scaled" style={{ transform: "translate(-50%, -50%) scale(var(--cp-label-scale, 1))", width: 24, height: 24,
+        borderRadius: "50%", border: `1.5px dashed ${FORECAST_COLOR}`, background: `rgba(8,12,18,${strong ? 0.85 : 0.7})`,
+        display: "grid", placeItems: "center", opacity: strong ? 1 : 0.85 }}>
+        <Icon size={12} color={FORECAST_COLOR} strokeWidth={2.4} />
       </div>,
     );
     return L.divIcon({ html, className: "cp-divicon", iconSize: [0, 0] });
