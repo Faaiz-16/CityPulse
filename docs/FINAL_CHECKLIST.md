@@ -94,6 +94,6 @@ Legend: ✅ verified · ⚠️ verified with a caveat · ❌ not done
 - [ ] Start both servers (or one-server mode) 5 minutes early; open `/api/health`
 - [ ] Demo → **Normal city**
 - [ ] Rehearse [DEMO.md](DEMO.md) once with a timer
-- [ ] Fill in the team table in `README.md` and the team name in the pitch
+- [x] Fill in the team table in `README.md` and the team name in the pitch
 - [ ] Optional: set `ANTHROPIC_API_KEY` and confirm the "AI-assisted" badge appears; if anything
       looks off, remove the key — the rule-based summary is complete on its own
