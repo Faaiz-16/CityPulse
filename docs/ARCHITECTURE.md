@@ -362,7 +362,8 @@ stored history ─► find the recorded event (first/last heavy-rain reading in 
    ─► frames (cached)  ─► /api/replay, /api/replay/frames/{i}, /api/replay/frames/{i}/zones/{id}
 ```
 
-- **The recorded storm** is part of the synthetic history: yesterday evening over Zones 3 and 4.
+- **The recorded storm** is part of the synthetic history: yesterday evening over Tonk Phatak
+  (block `C3-8`, C-Scheme district) and, 15 minutes later and weaker, Malviya Nagar (`C4-6`).
   Recorded events unfold over minutes, so downstream lags are stretched ×15 compared with the
   snappy live demo (`Effect.lag_scale`): rain 18:18 → traffic 18:23 → link 18:25 → disruption 18:26.
 - **1-minute archive.** Normal history is every 5 minutes; around the storm it is stored every
