@@ -8,8 +8,9 @@ import type { IncidentView, MapInfo, Prediction, Road, Sensor, ZoneBoundary, Zon
 import { clockTime, num, pct } from "../../utils/format";
 import { scatterInRect, type LatLon } from "../../utils/geo";
 import { hotspots, parseRef, refOf, SIZE } from "../../utils/grid";
-import { CHANCE_WORD, FORECAST_COLOR, STATUS_META } from "../../utils/status";
+import { FORECAST_COLOR } from "../../utils/status";
 import { HAZE, INCIDENT_KINDS, MAP_STATUS, MINOR_REPORT, RAIN, RAIN_LIGHT, SENSOR_COLORS, TRAFFIC_HOT, TRAFFIC_WARM } from "./mapColors";
+import { setHoveredBlock } from "./HoverCard";
 import { airIcon, districtIcon, forecastIcon, gridRefIcon, hotspotLabelIcon, incidentIcon, placeLabelIcon } from "./markers";
 
 export interface MapLayers {
@@ -167,41 +168,27 @@ const BlockTints = memo(function BlockTints({ grid, tints, selected }: {
   );
 });
 
-const escapeHtml = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
-
 /**
- * Clicks and hover are resolved by grid arithmetic — no 225 interactive shapes. The hover card is
- * one Leaflet tooltip that is moved to the pointer on every mouse move, so it always sits where you
- * are pointing (a tooltip bound to the outline would stay at the first block's position). React
- * only re-renders when the pointer crosses into another block.
+ * Clicks and hover are resolved by grid arithmetic — no 225 interactive shapes. The hovered block
+ * gets a faint outline here; its name and status show in the fixed hover card above the map
+ * (HoverCard), so nothing follows the pointer around. React only re-renders when the pointer
+ * crosses into another block.
  */
 function GridEvents({ grid, zones, onSelectZone }: { grid: Grid; zones: ZoneState[]; onSelectZone: (id: string) => void }) {
-  const map = useMap();
   const [hoverId, setHoverId] = useState<string | null>(null);
-  const tip = useRef<L.Tooltip | null>(null);
+  useEffect(() => setHoveredBlock(hoverId), [hoverId]);
+  useEffect(() => () => setHoveredBlock(null), []);
 
-  useEffect(() => {
-    tip.current = L.tooltip({ className: "cp-tooltip", direction: "top", offset: [0, -12], opacity: 1 });
-    return () => {
-      tip.current?.remove();
-      tip.current = null;
-    };
-  }, [map]);
-
-  const hide = () => {
-    tip.current?.remove();
-    setHoverId(null);
-  };
+  const hide = () => setHoverId(null);
   useMapEvents({
     click: (e) => {
       const id = blockAt(grid, e.latlng.lat, e.latlng.lng);
       if (id) onSelectZone(id);
     },
     mousemove: (e) => {
-      if (SMALL || !tip.current) return;
+      if (SMALL) return;
       const id = blockAt(grid, e.latlng.lat, e.latlng.lng);
       if (!id) return hide();
-      tip.current.setLatLng(e.latlng);
       setHoverId((cur) => (cur === id ? cur : id));
     },
     mouseout: hide,
@@ -209,20 +196,6 @@ function GridEvents({ grid, zones, onSelectZone }: { grid: Grid; zones: ZoneStat
   });
 
   const z = hoverId ? zones.find((x) => x.id === hoverId) : null;
-  useEffect(() => {
-    const t = tip.current;
-    if (!t) return;
-    if (!z) {
-      t.remove();
-      return;
-    }
-    const next = z.predictions?.[0];
-    t.setContent(`<strong>${escapeHtml(z.short_name)}</strong> <span style="color:#94a3b8">· ${z.id}</span><br>`
-      + `<span style="color:${MAP_STATUS[z.status]}">${STATUS_META[z.status].word}</span>`
-      + (next ? `<br><span style="color:${FORECAST_COLOR}">Next: ${escapeHtml(next.label)} · ${CHANCE_WORD[next.likelihood].toLowerCase()}</span>` : ""));
-    if (!map.hasLayer(t)) t.addTo(map);
-  }, [map, z?.id, z?.short_name, z?.status, z?.predictions?.[0]?.label, z?.predictions?.[0]?.likelihood]); // eslint-disable-line react-hooks/exhaustive-deps
-
   if (!z) return null;
   return (
     <Rectangle key={z.id} bounds={blockBounds(grid, z.id)} interactive={false}
