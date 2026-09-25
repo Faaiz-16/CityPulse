@@ -55,7 +55,7 @@ Built with **React** (a library for building UIs out of reusable components) and
 
 - **Map (the hero):** Jaipur fills the screen in 5 × 5 districts (A–E across, 1–5 down), each split
   into 3 × 3 blocks.
-  Normal areas are just faint lines; unusual areas get a soft amber or red tint; one label per
+  Normal areas draw nothing; unusual areas get a soft amber or red tint; one label per
   hotspot. Rain cells, congestion drawn on real roads, incident icons (only when unusual), an
   air-quality haze and optional IoT sensors.
 - **Header:** logo, a beating heart (colour = worst area, speed = how much is unusual), the mode
@@ -221,7 +221,7 @@ Code: `backend/app/simulation/`. Script: [DEMO.md](DEMO.md).
 **Leaflet** draws the map; the background tiles come from **OpenStreetMap** (free, no key),
 darkened with a CSS filter. Jaipur is split into **5 × 5 districts** (A1–E5, named after localities, e.g. Walled City = C2),
 each split into **3 × 3 blocks** of ~1.5 km (`C2-9`) — not official wards (the legend says so).
-Normal blocks are just faint grid lines; unusual blocks get a soft amber/red tint. Touching unusual
+Normal blocks draw nothing (the grid is off, `SHOW_GRID` in `CityMap.tsx`); unusual blocks get a soft amber/red tint. Touching unusual
 blocks form one **hotspot** with one label ("Walled City · Possible disruption · 13 blocks"). The
 map is drawn on a canvas, so zooming stays smooth.
 Congestion is drawn on Jaipur's real main roads (OpenStreetMap). Clicking an area zooms to it and

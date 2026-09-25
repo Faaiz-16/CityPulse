@@ -48,7 +48,7 @@ Use **slides 6 and 7** (real screenshots of the same journey) only if the live a
 
 **Slide 6 (backup): The working product**
 "The header shows the city's status. The problem is a local hotspot around the Walled City.
-Dashed violet blocks show where flooding or power cuts may happen next. Alerts are few and
+Rain and congestion show on Jaipur's real roads. Alerts are few and
 grouped. It runs live, as eight instant demo situations, and as a replay of a recorded storm."
 
 **Slide 7 (backup): End-to-end journey**

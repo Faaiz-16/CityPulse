@@ -1,9 +1,8 @@
-import { CarFront, ChevronDown, CloudRain, Droplets, FileWarning, Radar, Radio, Wind, Zap, type LucideIcon } from "lucide-react";
+import { CarFront, ChevronDown, CloudRain, Droplets, FileWarning, Radio, Wind, Zap, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 import type { MapLayers } from "./CityMap";
 
 const LAYERS: { key: keyof MapLayers; label: string; icon: LucideIcon }[] = [
-  { key: "forecast", label: "Outlook", icon: Radar },
   { key: "rain", label: "Rain", icon: CloudRain },
   { key: "traffic", label: "Traffic", icon: CarFront },
   { key: "reports", label: "Reports", icon: FileWarning },
@@ -50,14 +49,12 @@ export function PulseLegend() {
         <ul className="mt-2 space-y-1.5 text-[#cbd5e1]">
           <li className="flex items-center gap-2"><Swatch><span className="h-3.5 w-3.5 border border-[#f87171] bg-[#f8717126]" /></Swatch>Possible disruption</li>
           <li className="flex items-center gap-2"><Swatch><span className="h-3.5 w-3.5 border border-[#fbbf24aa] bg-[#fbbf2414]" /></Swatch>Needs attention</li>
-          <li className="flex items-center gap-2"><Swatch><span className="h-3.5 w-3.5 border border-[#94a3b855]" /></Swatch>Normal block</li>
           <li className="flex items-center gap-2"><Swatch><span className="flex gap-0.5"><i className="h-1.5 w-1.5 rounded-full bg-[#7dd3fc] shadow-[0_0_6px_#38bdf8]" /><i className="h-1.5 w-1.5 rounded-full bg-[#38bdf8] shadow-[0_0_6px_#38bdf8]" /></span></Swatch>Rain</li>
           <li className="flex items-center gap-2"><Swatch><span className="h-1 w-5 rounded-full bg-[#f87171] shadow-[0_0_6px_#f87171]" /></Swatch>Heavy traffic</li>
           <li className="flex items-center gap-2"><Swatch><Zap size={13} color="#facc15" /></Swatch>Power / signal outage</li>
           <li className="flex items-center gap-2"><Swatch><CarFront size={13} color="#f87171" /></Swatch>Road accident</li>
           <li className="flex items-center gap-2"><Swatch><Droplets size={13} color="#38bdf8" /></Swatch>Waterlogging</li>
           <li className="flex items-center gap-2"><Swatch><span className="h-3 w-5 rounded-full bg-[#a855f7] opacity-60 blur-[2px]" /></Swatch>Poor air</li>
-          <li className="flex items-center gap-2"><Swatch><span className="h-3.5 w-3.5 border border-dashed border-[#a78bfa] bg-[#a78bfa14]" /></Swatch>Possible next impact</li>
         </ul>
       )}
       {open && <p className="mt-2 text-[10px] leading-snug text-[var(--faint)]">Jaipur in 5 × 5 districts (A–E, 1–5), each split into 3 × 3 blocks of ~1.5 km — demonstration areas, not official wards.</p>}

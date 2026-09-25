@@ -247,9 +247,9 @@ possible impacts *next*, in the same block and (more weakly) the 8 neighbouring 
 Each prediction's score is the driver's strength (e.g. rain intensity, anomaly severity) × the
 rule's weight; it is shown as a **low / medium / high chance** with a rough time horizon and the
 observed conditions it is based on. Impacts already being measured in a block are not predicted
-there, and worse air is not predicted where it is raining (rain washes particles out). On the
-map, calm blocks with a medium/high chance get a dashed violet outline and the impact's icon
-("Outlook" layer); every block's panel lists "What may happen next". Predictions are labelled as
+there, and worse air is not predicted where it is raining (rain washes particles out). Every
+block's panel and hover card list "What may happen next" (the map's dashed violet "Outlook" layer
+is switched off for now, `SHOW_OUTLOOK` in `CityMap.tsx`). Predictions are labelled as
 possibilities, never as causes or certainties.
 
 ## 10. Feed resilience (`services/feed_manager.py`)

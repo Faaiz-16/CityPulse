@@ -42,7 +42,7 @@ same journey.
 
 Pre-flight checklist:
 
-- [ ] Only faint grid lines on the map; nothing tinted or glowing
+- [ ] Just the map of Jaipur; no blocks tinted or glowing
 - [ ] Active alerts: *All clear — nothing unusual right now.*
 - [ ] Laptop won't sleep; notifications off
 
@@ -52,7 +52,7 @@ Times are from the start of the demo. If you are running long, skip step 5 (mult
 
 | Time | What you do | What judges see |
 |---|---|---|
-| 0:00 | Open on the map | Jaipur with a faint grid, green heart, "All clear" |
+| 0:00 | Open on the map | A clean map of Jaipur, green heart, "All clear" |
 | 0:20 | **Demo → Heavy rainfall** | ~2 s later: the map flies to the Walled City; a red hotspot of 9 blocks, rain cells, congestion on real roads, waterlogging icons; the simple area panel opens |
 | 0:40 | Read the panel aloud | "Possible disruption · Heavy rain · Traffic much heavier than usual · Buses running late · Allow extra travel time" |
 | 1:10 | **Explain in detail** | What's happening, measured evidence, possible relationship (*not a confirmed cause*) |
