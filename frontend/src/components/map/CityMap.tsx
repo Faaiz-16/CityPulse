@@ -118,6 +118,8 @@ function LabelScale() {
 // ------------------------------------------------------------------ grid
 /** Off for now: normal blocks draw nothing, so only amber and red blocks stand out. */
 const SHOW_GRID = false;
+/** Off for now too: "what may happen next" stays in the block panel and hover card, not as boxes. */
+const SHOW_OUTLOOK = false;
 
 
 /** District lines (5 × 5) are clear; block lines (3 × 3 inside each) are faint. Drawn once. */
@@ -517,7 +519,7 @@ export function CityMap({ boundaries, mapInfo, zones, sensors, layers, selectedZ
         <>
           <Framing grid={grid} selectedZone={selectedZone ?? focusZone} panelOpen={panelOpen}
             leftPanelOpen={!selectedZone && !!focusZone && leftPanelOpen} />
-          {layers.forecast && <ForecastLayer grid={grid} outlook={outlook} />}
+          {SHOW_OUTLOOK && layers.forecast && <ForecastLayer grid={grid} outlook={outlook} />}
           {layers.air && <AirLayer grid={grid} air={air} badges={badges} />}
           {layers.rain && <RainLayer grid={grid} rain={rain} />}
           <BlockTints grid={grid} tints={tints} selected={selectedZone} />

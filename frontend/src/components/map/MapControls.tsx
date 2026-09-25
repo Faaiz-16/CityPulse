@@ -1,9 +1,8 @@
-import { CarFront, ChevronDown, CloudRain, Droplets, FileWarning, Radar, Radio, Wind, Zap, type LucideIcon } from "lucide-react";
+import { CarFront, ChevronDown, CloudRain, Droplets, FileWarning, Radio, Wind, Zap, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 import type { MapLayers } from "./CityMap";
 
 const LAYERS: { key: keyof MapLayers; label: string; icon: LucideIcon }[] = [
-  { key: "forecast", label: "Outlook", icon: Radar },
   { key: "rain", label: "Rain", icon: CloudRain },
   { key: "traffic", label: "Traffic", icon: CarFront },
   { key: "reports", label: "Reports", icon: FileWarning },
@@ -56,7 +55,6 @@ export function PulseLegend() {
           <li className="flex items-center gap-2"><Swatch><CarFront size={13} color="#f87171" /></Swatch>Road accident</li>
           <li className="flex items-center gap-2"><Swatch><Droplets size={13} color="#38bdf8" /></Swatch>Waterlogging</li>
           <li className="flex items-center gap-2"><Swatch><span className="h-3 w-5 rounded-full bg-[#a855f7] opacity-60 blur-[2px]" /></Swatch>Poor air</li>
-          <li className="flex items-center gap-2"><Swatch><span className="h-3.5 w-3.5 border border-dashed border-[#a78bfa] bg-[#a78bfa14]" /></Swatch>Possible next impact</li>
         </ul>
       )}
       {open && <p className="mt-2 text-[10px] leading-snug text-[var(--faint)]">Jaipur in 5 × 5 districts (A–E, 1–5), each split into 3 × 3 blocks of ~1.5 km — demonstration areas, not official wards.</p>}
