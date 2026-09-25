@@ -77,7 +77,7 @@ Full details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 - **Smooth map.** Canvas rendering, no blur behind panels, and layers that only redraw when they
   change — 60 fps while zooming.
 - **Map-first, 10-second read.** The default screen is the map, a slim header and a handful of
-  alerts. Normal blocks are just faint grid lines; unusual blocks get a soft amber or red tint and
+  alerts. Normal blocks draw nothing (no grid); unusual blocks get a soft amber or red tint and
   each hotspot gets one short label. Everything else is one click away.
 - **Visual language.** Glowing rain cells, congestion drawn on Jaipur's **real main roads**
   (OpenStreetMap), clustered incident
@@ -96,7 +96,7 @@ Full details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 - **What may happen next.** From what is happening now, CityPulse shows the likely knock-on
   impacts here and in neighbouring blocks — e.g. heavy rain → possible flash flooding and power
   cuts nearby — each with a low / medium / high chance, a rough time frame and what it is based
-  on. Calm blocks at risk get a dashed violet outline on the map (the "Outlook" layer).
+  on. It appears in each block's panel and hover card; the map itself shows only amber and red.
 - **Demo drawer.** Eight realistic scenario presets (heavy rain, flash flood, congestion,
   accident, power outage, poor air, severe storm, multi-event) that unfold over time with
   pause and 1×/2×/4×; a live storyline ticks each beat only when the analysis detects it.

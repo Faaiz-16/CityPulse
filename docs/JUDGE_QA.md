@@ -21,7 +21,7 @@ explains them in plain language on a map.
 zone panel gives staff and journalists the evidence behind every flag.
 
 ### 3. How do you meet the "understandable in 10 seconds" requirement?
-**Short:** A map-first screen: normal blocks are just a faint grid, only unusual blocks get
+**Short:** A map-first screen: normal blocks draw nothing at all, only unusual blocks get
 colour + icon + one word, and at most 4 grouped alerts — details are one click away.
 **Detailed:** Status is always colour + icon + word (never colour alone). Of Jaipur's 225 blocks
 (5 × 5 districts of 3 × 3 blocks), only unusual ones are tinted amber or red, with one short label
