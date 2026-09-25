@@ -1,4 +1,4 @@
-# CityPulse — Setup
+# CityPulse: Setup
 
 Everything runs locally. No accounts, API keys or internet access are required for the demo
 (the map tiles need internet; without it the zones still render on a plain background).
@@ -59,7 +59,7 @@ cp .env.example backend/.env
 | `CITYPULSE_HEAVY_RAIN_MM_H` | `7.6` | Heavy-rain threshold |
 
 All thresholds are listed in `backend/app/config.py` and explained in `docs/ARCHITECTURE.md`.
-Never commit `.env` — it is in `.gitignore`.
+Never commit `.env`: it is in `.gitignore`.
 
 ## 4. Run the tests
 
@@ -83,7 +83,7 @@ npm run build
 
 ## 5. One-server mode (for judging or deployment)
 
-Build the frontend once, and the backend serves it too — one command, one port:
+Build the frontend once, and the backend serves it too (one command, one port):
 
 ```bash
 cd frontend && npm run build
@@ -100,7 +100,7 @@ to serve a build from another folder.)
 keeps each value "current" for that long. Live AQI is judged only against the health threshold
 (AQI ≥ 150), because the learned baselines come from synthetic history. Real Jaipur air quality can
 be unhealthy, so expect amber areas with the note "insufficient evidence to suggest any
-explanation" — that's the system being honest. Leave live mode **off** for the scripted demo;
+explanation": that's the system being honest. Leave live mode **off** for the scripted demo;
 starting a demo event pauses live data automatically and labels feeds SIMULATED.
 
 ## 7. Using PostgreSQL instead of SQLite (optional)
@@ -119,7 +119,7 @@ Tables are created automatically on start-up.
 | Frontend shows "Connecting to CityPulse…" forever | Backend isn't running on port 8000. Start it and the page reconnects by itself. |
 | `Address already in use` | Another process is on port 8000/5173. Stop it or use `--port`. |
 | Map is dark with no streets | No internet for map tiles. Zones, labels and data still work. |
-| All feeds show `UNAVAILABLE` after the laptop slept | Normal — feeds recover on the next tick (≤ 10 s). |
+| All feeds show `UNAVAILABLE` after the laptop slept | Normal: feeds recover on the next tick (≤ 10 s). |
 | "Replay: No recorded event found" | History is generated on first start; restart the backend once. |
 | Want a clean slate | Delete `backend/data/citypulse.db` and restart, or press **Demo → Normal state**. |
 | AI badge never says "AI-assisted" | `ANTHROPIC_API_KEY` not set or the call failed; `/api/health` shows the AI status. Rule-based summaries are complete on their own. |

@@ -1,4 +1,4 @@
-# CityPulse — Architecture
+# CityPulse: Architecture
 
 This document explains how CityPulse turns disconnected civic feeds into one understandable
 "pulse". It is written for someone new to the codebase; technical terms are explained the first
@@ -19,13 +19,13 @@ time they appear.
         ▼
  COMMON CIVIC DATA MODEL  (CivicReading / CivicIncident)
         ▼
- ROLLING STORE (in memory, last 40 min)  ──►  DATABASE (history, alerts, snapshots — best effort)
+ ROLLING STORE (in memory, last 40 min)  ──►  DATABASE (history, alerts, snapshots - best effort)
         ▼
  ANALYSIS ENGINE
    baselines (median/MAD by time of day) → anomaly detection → rolling-window correlation
    → possible-impact / risk insight → zone status GREEN / YELLOW / RED
         ▼
- STRUCTURED CIVIC STATE  (CityState — the single source of truth)
+ STRUCTURED CIVIC STATE  (CityState - the single source of truth)
         ├──► MAP (React + Leaflet)             "What / where / how serious?"
         ├──► AI / NLP layer                     plain-language summary (template or validated LLM)
         └──► MONITORING AGENT                   opens / escalates / resolves alerts
@@ -34,7 +34,7 @@ time they appear.
 ```
 
 One **tick** of this pipeline runs every 3 seconds (`CITYPULSE_TICK_SECONDS`). The API never
-computes anything on request — it serves the latest `CityState`, so it stays fast even when a
+computes anything on request: it serves the latest `CityState`, so it stays fast even when a
 feed or the AI service is slow.
 
 ## 2. Technology choices
@@ -47,7 +47,7 @@ feed or the AI service is slow.
 | Map | Leaflet + react-leaflet, OpenStreetMap tiles | Free, no API key, reliable |
 | Charts | Recharts | Lightweight React charts |
 | Icons | lucide-react | Consistent, accessible SVG icons |
-| AI | Anthropic Claude API (optional) | Rewrites structured facts into friendlier language; always validated, always optional |
+| AI | Optional LLM API (Anthropic SDK) | Rewrites structured facts into friendlier language; always validated, always optional |
 | Live data | Open-Meteo weather + air-quality APIs (optional) | Free, no key, stable |
 
 **Live updates use polling** (the browser asks for `/api/dashboard` every 3 s) rather than
@@ -63,10 +63,10 @@ synthetic feeds deliberately reproduce real-world messiness:
 |---|---|---|---|---|
 | Weather | "CPMET" rain-gauge JSON | ISO-8601 with `+05:30` offset | rain in **mm per 15 min**, temperature in **°F**, wind in **m/s**; station IDs | 10 s |
 | Weather (live, optional) | Open-Meteo JSON | ISO without zone (UTC) | precipitation per 15-min interval | 10 min |
-| Traffic — roads | "TSN v2" JSON, camelCase | **epoch milliseconds** | raw **speed**; congestion must be derived from speed ÷ free-flow speed; sensor IDs | 5 s |
-| Traffic — buses | **CSV text** | **day-first local** `24/09/2026 15:07` | delay in **seconds**; operator area codes `CEN/NTH/EST/…` instead of zone IDs | 5 s |
+| Traffic, roads | "TSN v2" JSON, camelCase | **epoch milliseconds** | raw **speed**; congestion must be derived from speed ÷ free-flow speed; sensor IDs | 5 s |
+| Traffic, buses | **CSV text** | **day-first local** `24/09/2026 15:07` | delay in **seconds**; operator area codes `CEN/NTH/EST/…` instead of zone IDs | 5 s |
 | Civic reports | Open311 GeoReport v2 JSON | ISO-8601 `Z` (UTC) | free-text service names ("Water Logging"); `long` not `lon`; **may contain personal fields** | 5 s |
-| Air quality | OpenAQ-like JSON | nested `date.utc` | **PM2.5 only** — CityPulse computes the US AQI itself | 20 s |
+| Air quality | OpenAQ-like JSON | nested `date.utc` | **PM2.5 only**, CityPulse computes the US AQI itself | 20 s |
 | Air quality (live, optional) | Open-Meteo JSON | ISO without zone (UTC) | provides `us_aqi` + `pm2_5` | 10 min |
 | IoT water level | MQTT-style messages | **epoch seconds** | sensor ID hidden in the topic; value in **mm** inside a JSON *string* | 10 s |
 
@@ -79,7 +79,7 @@ value = daily pattern (rush hours, evening air-quality peak) × zone character
         + small noise seeded from (seed, zone, metric, time)
 ```
 
-Seeded noise means the same inputs always give the same outputs — demos and tests are
+Seeded noise means the same inputs always give the same outputs, so demos and tests are
 repeatable. Simulation **effects** change the city, not the analysis: a heavy-rain effect raises
 rainfall immediately, then congestion (+20 s lag), water levels (+25 s), waterlogging reports
 (+25 s) and bus delays (+30 s). The analysis has to *discover* those relationships.
@@ -88,13 +88,13 @@ rainfall immediately, then congestion (+20 s lag), water levels (+25 s), waterlo
 
 Every record becomes one of two shapes (`app/schemas.py`):
 
-**`CivicReading`** — a measurement
+**`CivicReading`**: a measurement
 `source, source_type, provider, zone_id, timestamp (UTC), ingested_at, metric, value, unit,
 confidence, data_status (live | simulated | fallback), sensor_id, lat, lon, metadata`
 
-**`CivicIncident`** — an anonymous report
+**`CivicIncident`**: an anonymous report
 `id, source, zone_id, timestamp, ingested_at, category, severity, lat, lon, confidence,
-data_status, metadata` — there is deliberately **no field that could hold personal data**.
+data_status, metadata`: there is deliberately **no field that could hold personal data**.
 
 Each normalizer (`normalization/normalizers.py`) does six things per record:
 1. map vendor field names → common names,
@@ -108,19 +108,19 @@ Each normalizer (`normalization/normalizers.py`) does six things per record:
 Timestamps in the future (> 5 min skew) are rejected. For reports, only whitelisted fields
 survive; account IDs and phone numbers are dropped and never stored.
 
-## 5. Areas — Jaipur as districts and blocks
+## 5. Areas: Jaipur as districts and blocks
 
 Jaipur is laid out on a two-level grid (`geo/zones.py`), like a paper map with an inset:
 
-- **Districts** — **5 × 5**, about 4.5 km each. Columns **A–E** run west → east and rows **1–5**
+- **Districts**: **5 × 5**, about 4.5 km each. Columns **A-E** run west → east and rows **1-5**
   north → south. Each is named after its best-known locality (C2 = "Walled City").
-- **Blocks** — every district is split into **3 × 3** blocks of about 1.5 km, numbered **1–9** like
+- **Blocks**: every district is split into **3 × 3** blocks of about 1.5 km, numbered **1-9** like
   a phone keypad (1 = north-west, 5 = centre, 9 = south-east). A block ID is `C2-9`: block 9 of
   district C2. That makes **225 blocks**.
 
 The **block is the unit of analysis**: each has five simulated sensors (2 traffic sensors placed
 **on real main roads**, 1 rain gauge, 1 air monitor, 1 water-level sensor), its own baselines and
-its own status. Districts are how people read the city — names, grid references and labels.
+its own status. Districts are how people read the city: names, grid references and labels.
 Blocks are named after a locality inside them ("Walled City (C2-9)", "Mansarovar (B4-5)") or
 after their district and position ("Walled City · north-east"). They are *not* official wards
 and the UI says so. Mapping a coordinate to a block is simple arithmetic on the grid.
@@ -136,7 +136,7 @@ the Nahargarh hills. An event is centred on one block and reaches its neighbours
 strength (Gaussian falloff), so it shows up as a realistic **hotspot**: heavy rain ≈ 13 blocks (9
 red) around the Walled City, a road accident exactly one block.
 
-## 6. Baselines — "what is normal here, now?"
+## 6. Baselines: "what is normal here, now?"
 
 Traffic at 9 a.m. is not comparable with traffic at 3 a.m., so baselines are learned per
 **zone × metric × half-hour of the day** from 3 days of stored history (`analysis/baseline.py`).
@@ -189,13 +189,13 @@ A relationship is only *considered* when all of these hold:
 | Rule | Driver | Response(s) | Supporting |
 |---|---|---|---|
 | `rain_traffic` | rainfall | traffic congestion | bus delays |
-| `rain_flooding` | rainfall | waterlogging reports, street water level | — |
+| `rain_flooding` | rainfall | waterlogging reports, street water level | - |
 | `outage_traffic` | power/signal outage reports | traffic congestion | bus delays |
 | `accident_traffic` | road-accident reports | traffic congestion | bus delays |
-| `traffic_transit` | traffic congestion | bus delays | — (dropped when another link already explains the bus delays) |
-| `traffic_air` | traffic congestion | air quality | — |
+| `traffic_transit` | traffic congestion | bus delays | (dropped when another link already explains the bus delays) |
+| `traffic_air` | traffic congestion | air quality | - |
 
-**Evidence score** (0–1): 0.40 base + up to 0.15 each for driver and response severity + 0.15
+**Evidence score** (0-1): 0.40 base + up to 0.15 each for driver and response severity + 0.15
 if timing fits (−0.10 if not) + up to 0.10 for **co-movement** (Pearson correlation of the two
 series in 20-second bins over the window) + up to 0.10 for extra/supporting signals.
 **Strong ≥ 0.8 · Moderate ≥ 0.6 · Weak** otherwise.
@@ -216,25 +216,25 @@ What CityPulse says when there is **no** relationship:
 | Insight | Condition | Example headline |
 |---|---|---|
 | **Potential disruption** (high) | ≥ 1 moderate/strong relationship **and** ≥ 2 anomalies of moderate+ severity in the zone | "Elevated traffic disruption risk in Walled City (C2-9)" |
-| **Early warning** (elevated) — traffic | rain anomalous, congestion ≥ +10 % and **rising**, but below the 30 % threshold | "Traffic may slow in Walled City (C2-9)" |
-| **Early warning** — water | rain anomalous, water level ≥ half the flag level and rising | "Water may collect on streets in Walled City (C2-9)" |
+| **Early warning** (elevated), traffic | rain anomalous, congestion ≥ +10 % and **rising**, but below the 30 % threshold | "Traffic may slow in Walled City (C2-9)" |
+| **Early warning**, water | rain anomalous, water level ≥ half the flag level and rising | "Water may collect on streets in Walled City (C2-9)" |
 
 Early warnings address the brief's pain point "alerts are reactive, not predictive": they fire
 *before* the second signal crosses its threshold, and they say so.
 
 ### Zone status
-- **RED — Possible disruption:** a potential-disruption insight, or ≥ 2 high-severity anomalies.
-- **YELLOW — Attention:** any anomaly, relationship or early warning.
-- **GREEN — Normal:** nothing unusual.
+- **RED: Possible disruption:** a potential-disruption insight, or ≥ 2 high-severity anomalies.
+- **YELLOW: Attention:** any anomaly, relationship or early warning.
+- **GREEN: Normal:** nothing unusual.
 
 Status is always shown as **colour + icon + word**, never colour alone.
 
-### Predictive impact — what may happen next (`analysis/forecast.py`)
+### Predictive impact: what may happen next (`analysis/forecast.py`)
 
 After every block is analysed, well-known knock-on effects turn what is unusual *now* into
 possible impacts *next*, in the same block and (more weakly) the 8 neighbouring blocks:
 
-| Observed | Possible next — here | Possible next — neighbouring blocks |
+| Observed | Possible next, here | Possible next, neighbouring blocks |
 |---|---|---|
 | Heavy rain | flash flooding, power cuts, slower traffic, bus delays | flash flooding, power cuts, slower traffic |
 | Rising street water | flash flooding, slower traffic, power cuts, bus delays | flash flooding, slower traffic |
@@ -242,7 +242,7 @@ possible impacts *next*, in the same block and (more weakly) the 8 neighbouring 
 | Heavy traffic | bus delays, worse air | slower traffic |
 | Road-accident reports | slower traffic, bus delays | slower traffic |
 | Power / signal outages | slower traffic (dark signals), bus delays | power cuts, slower traffic |
-| Poor air | — | worse air |
+| Poor air | - | worse air |
 
 Each prediction's score is the driver's strength (e.g. rain intensity, anomaly severity) × the
 rule's weight; it is shown as a **low / medium / high chance** with a rough time horizon and the
@@ -271,7 +271,7 @@ Rules that keep the system honest:
 - Nothing is ever labelled LIVE unless it came from a real API.
 - Live values stay "current" for the upstream's own publishing cadence (Open-Meteo weather
   15 min, air quality 60 min), not our polling rate; the in-memory store keeps 3 hours for this.
-- Stale/cached data is displayed with its age but **ages out of the analysis window** — it is
+- Stale/cached data is displayed with its age but **ages out of the analysis window**: it is
   not treated as current.
 - Missing data makes a metric `available: false` ("not assessed"), never zero.
 - Every feed is polled inside its own `try/except`; one broken feed cannot stop the others.
@@ -282,20 +282,20 @@ best-effort (`services/persistence.py`); on failure the pulse keeps running,
 `/api/health` reports `storage: degraded`, and default baselines are used if history can't load.
 
 **API errors:** validation problems return `422` with field messages; unknown zones `404`;
-unexpected errors return a generic `500` message — stack traces stay in the server log.
+unexpected errors return a generic `500` message: stack traces stay in the server log.
 
 ## 11. AI / NLP layer (`app/ai/`)
 
 ```
 CityState ──► facts.py (compact fact sheet) ──► templates.py ──► always-available summary
                                    │
-                                   └──► llm.py (Claude, structured output) ──► validator.py ──► shown only if it passes
+                                   └──► llm.py (LLM, structured output) ──► validator.py ──► shown only if it passes
 ```
 
 - The **template** summary is built every tick and is the default.
 - If `ANTHROPIC_API_KEY` is set and the *situation* changes (fingerprint of statuses,
   anomalies, relationships and feed health), an LLM rewrite is requested **in a background
-  thread** — the pipeline never waits for it; at most one call per 20 s.
+  thread**: the pipeline never waits for it; at most one call per 20 s.
 - The model sees only the fact sheet, never raw feeds, and must return a fixed JSON shape
   (`messages.parse` with a Pydantic schema).
 - The **validator** rejects the text if it contains any number not present in the facts, any
@@ -318,7 +318,7 @@ CHECK FEEDS → CHECK DATA QUALITY → CHECK ANOMALIES → CHECK RELATED SIGNALS
   note** separately.
 - **Hysteresis:** an alert resolves only after its condition is absent for 3 consecutive checks,
   so noise doesn't make it flicker. Lower alerts for a zone are folded into its critical alert.
-- The last reasoning trace is shown in the zone panel ("Monitoring agent — last check").
+- The last reasoning trace is shown in the zone panel ("Monitoring agent, last check").
 - It is rule-driven: it can only raise alerts about facts present in the civic state.
 
 ## 13. Simulation and demo (`app/simulation/`)
@@ -331,10 +331,10 @@ CHECK FEEDS → CHECK DATA QUALITY → CHECK ANOMALIES → CHECK RELATED SIGNALS
   timed list of effects plus a **storyline** of beats (e.g. rain begins → traffic builds → water
   rises → reports → possible relationship → possible disruption).
 - Beats are ticked off from the **actual analysis output** (value, deviation, anomaly flag, link
-  or status checks), never a timer — the storyline proves what the system detected and when.
+  or status checks), never a timer, so the storyline proves what the system detected and when.
 - **Instant start (default).** Choosing a scenario shows the developed situation straight away:
   the scenario is started ~2 minutes in the past and the pipeline is **fast-forwarded** through
-  that time in 5-second ticks — the same feeds, normalization, analysis and agent as live, just
+  that time in 5-second ticks, with the same feeds, normalization, analysis and agent as live, just
   computed at once (~2 s). Storyline beats keep their real detection times ("after 95 s").
   `instant=False` starts it now to watch it unfold, with pause and 2×/4×.
 - **Scenario clock** (`SimClock` in `city_model.py`): effects are evaluated in scenario time,
@@ -344,7 +344,7 @@ CHECK FEEDS → CHECK DATA QUALITY → CHECK ANOMALIES → CHECK RELATED SIGNALS
   a deterministic accumulator so the report surge is reliable; background reports stay Poisson.
 - **Custom:** sliders for rain, flooding, traffic, accident, outage and air pollution in any zone
   (`set_custom()`), each mapped to the same effects the presets use.
-- **Single events** and **feed faults** (outage, delay, malformed — any feed) remain available.
+- **Single events** and **feed faults** (outage, delay, malformed: any feed) remain available.
 - **Replay recorded storm:** see section 14.
 - **Warm-up:** on start and reset, the last 10 minutes are back-filled so rolling windows are
   meaningful immediately.
@@ -352,7 +352,7 @@ CHECK FEEDS → CHECK DATA QUALITY → CHECK ANOMALIES → CHECK RELATED SIGNALS
 ## 14. Historical replay (`simulation/replay.py`)
 
 Replay answers the brief's optional "historical replay to demonstrate pattern detection working
-over past data" — using **stored data**, not the live simulation.
+over past data": using **stored data**, not the live simulation.
 
 ```
 stored history ─► find the recorded event (first/last heavy-rain reading in the archive)
@@ -371,7 +371,7 @@ stored history ─► find the recorded event (first/last heavy-rain reading in 
   Those extra rows are **excluded from baselines**, and report baselines use the **median across
   days**, so the storm never redefines "normal" (tested).
 - **Honest labelling.** Replay frames have `mode = "replay"`, every feed shows **ARCHIVE**, the top
-  bar says "Recorded … — not live", and summaries are rule-based.
+  bar says "Recorded …: not live", and summaries are rule-based.
 - **Client-owned playhead.** The browser asks for frame *i* (play, pause, step, 1×/2×/4×, scrub, jump
   to a key moment). Frames are computed once (~0.2 s) and cached, so every viewer sees the same thing.
 - **Key moments** use the same stage checks as the live scenario (`storm_stages`), gated so later
@@ -383,7 +383,7 @@ stored history ─► find the recorded event (first/last heavy-rain reading in 
 
 ```
 App.tsx  (full-bleed map; everything else floats over it)
-├── CityMap ── (canvas) district lines (5 × 5, clear) + block lines (3 × 3, faint) · A–E / 1–5 refs
+├── CityMap ── (canvas) district lines (5 × 5, clear) + block lines (3 × 3, faint) · A-E / 1-5 refs
 │             · district names when zoomed in · soft amber/red tint only on unusual blocks
 │             · one label per hotspot · rain cells · congestion on real OSM roads
 │             · incident clusters (only when unusual) · air haze · IoT sensors
@@ -402,7 +402,7 @@ App.tsx  (full-bleed map; everything else floats over it)
 ```
 
 In replay mode (`useReplay`), every panel reads the current recorded frame instead of the live
-state — the same components render both. `usePolling` keeps the last good data when a request fails and shows a "connection lost" banner
+state: the same components render both. `usePolling` keeps the last good data when a request fails and shows a "connection lost" banner
 instead of blanking the screen.
 
 **Smooth map with 225 blocks.** All map shapes are drawn on a **canvas** (`preferCanvas`) rather
@@ -415,7 +415,7 @@ changes (derived lists are kept stable across 3-second polls). Measured: 60 fps 
 
 **10-second read:** the default view is the map, a slim header and a few alerts. Normal zones are
 faint; attention zones amber; possible disruptions are highlighted red areas with a two-line
-label. Everything else is progressive disclosure — one click away.
+label. Everything else is progressive disclosure, one click away.
 
 ## 16. Database schema (summary)
 

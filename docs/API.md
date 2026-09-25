@@ -1,10 +1,10 @@
-# CityPulse — API Reference
+# CityPulse: API Reference
 
 Base URL (local): `http://127.0.0.1:8000`. Interactive docs with "Try it out":
 `http://127.0.0.1:8000/docs`.
 
 All responses are JSON. Times are ISO-8601 **UTC** (the UI converts them to local time).
-No authentication — this is a public-information demo (see *Security* at the end).
+No authentication: this is a public-information demo (see *Security* at the end).
 
 **Design rule:** read endpoints never compute anything. The pipeline runs every 3 seconds and
 the API serves its latest result (`CityState`), so a slow feed or AI call can't slow a request.
@@ -17,7 +17,7 @@ the API serves its latest result (`CityState`), so a slow feed or AI call can't 
 |---|---|---|
 | GET | [`/api/health`](#get-apihealth) | Is everything working? |
 | GET | [`/api/dashboard`](#get-apidashboard) | The complete civic state (what the UI polls) |
-| GET | [`/api/zones`](#get-apizones) | The 225 blocks (districts A1–E5 × blocks 1–9) + current status |
+| GET | [`/api/zones`](#get-apizones) | The 225 blocks (districts A1-E5 × blocks 1-9) + current status |
 | GET | [`/api/map`](#get-apimap) | Grid edges + Jaipur main roads (OpenStreetMap) per block |
 | GET | [`/api/zones/{zone_id}`](#get-apizoneszone_id) | Detail for one block (e.g. `C2-9`) |
 | GET | [`/api/readings`](#get-apireadings) | Recent normalized readings |
@@ -56,7 +56,7 @@ the API serves its latest result (`CityState`), so a slow feed or AI call can't 
   "storage":  { "ok": true, "detail": "ok" },
   "feeds": { "weather": "SIMULATED", "traffic": "SIMULATED", "incidents": "SIMULATED",
              "air_quality": "SIMULATED", "iot_sensors": "SIMULATED" },
-  "ai": "disabled (no API key) — using templates"
+  "ai": "disabled (no API key) - using templates"
 }
 ```
 
@@ -65,7 +65,7 @@ the API serves its latest result (`CityState`), so a slow feed or AI call can't 
 
 ### GET `/api/dashboard`
 
-The single structured civic state — the source of truth for the map, dashboard, AI and agent.
+The single structured civic state, the source of truth for the map, dashboard, AI and agent.
 
 | Field | Meaning |
 |---|---|
@@ -84,12 +84,12 @@ The single structured civic state — the source of truth for the map, dashboard
 headline, issue_types[], metrics{}, anomalies[], relationships[], risks[],
 insufficient_evidence[], cannot_assess[], incident_counts{}, recent_incidents[], anchor, predictions[]`.
 
-`predictions[]` — possible next impacts for the block (a forecast, not a certainty):
+`predictions[]`: possible next impacts for the block (a forecast, not a certainty):
 `{kind: flooding|power_cut|traffic|bus_delays|air_quality, label, likelihood: low|medium|high, score,
-horizon ("next 30–60 min"), reason ("Based on rain at 26 mm/h in a neighbouring block (Walled City)."),
+horizon ("next 30-60 min"), reason ("Based on rain at 26 mm/h in a neighbouring block (Walled City)."),
 source_zone, nearby}`. Empty for a block with nothing to watch.
 
-**`metrics[key]`** (one per signal) — everything needed to explain "how unusual":
+**`metrics[key]`** (one per signal): everything needed to explain "how unusual":
 
 ```json
 {
@@ -101,10 +101,10 @@ source_zone, nearby}`. Empty for a block with nothing to watch.
 }
 ```
 
-`available: false` with `current: null` means the feed is missing — the value is **not assessed**,
+`available: false` with `current: null` means the feed is missing: the value is **not assessed**,
 never assumed to be zero.
 
-**`relationships[]`** — possible links, never causes:
+**`relationships[]`**: possible links, never causes:
 
 ```json
 {
@@ -121,7 +121,7 @@ never assumed to be zero.
 
 ### GET `/api/zones`
 
-The 225 blocks (5 × 5 districts A1–E5, each 3 × 3 blocks numbered 1–9) with GeoJSON squares and
+The 225 blocks (5 × 5 districts A1-E5, each 3 × 3 blocks numbered 1-9) with GeoJSON squares and
 current status.
 
 ```json
@@ -162,7 +162,7 @@ Everything the area panel needs for one area (e.g. `/api/zones/C2-9`).
 | `alerts[]` | Active alerts for this zone |
 | `agent_trace[]` | The agent's last reasoning steps |
 
-Errors: `404` `{"detail": "Unknown block 'Z9'. Blocks look like C2-5 (district A1–E5, block 1–9)."}`
+Errors: `404` `{"detail": "Unknown block 'Z9'. Blocks look like C2-5 (district A1-E5, block 1-9)."}`
 
 ---
 
@@ -172,9 +172,9 @@ Errors: `404` `{"detail": "Unknown block 'Z9'. Blocks look like C2-5 (district A
 
 | Query | Required | Default | Notes |
 |---|---|---|---|
-| `zone_id` | yes | — | a block, e.g. `C2-9` |
-| `metric` | yes | — | e.g. `rain_mm_h`, `congestion_pct`, `aqi`, `water_level_cm` |
-| `minutes` | no | 15 | 1–40 |
+| `zone_id` | yes | - | a block, e.g. `C2-9` |
+| `metric` | yes | - | e.g. `rain_mm_h`, `congestion_pct`, `aqi`, `water_level_cm` |
+| `minutes` | no | 15 | 1-40 |
 
 ```json
 [{ "source": "traffic", "source_type": "traffic", "provider": "synthetic city model", "zone_id": "C2-9",
@@ -190,7 +190,7 @@ e.g. `{"route_id": "R-84A"}` for bus delays or `{"derived_from": "pm25 (US EPA b
 
 ### GET `/api/incidents`
 
-Query: `zone_id` (optional), `minutes` (1–40, default 10). Returns normalized, anonymous reports:
+Query: `zone_id` (optional), `minutes` (1-40, default 10). Returns normalized, anonymous reports:
 
 ```json
 [{ "id": "SR-5BC70D3E6D", "source": "incidents", "zone_id": "C4-6",
@@ -233,9 +233,9 @@ One entry per feed:
 |---|---|
 | `LIVE` | Fresh data from a real public API |
 | `SIMULATED` | Fresh data from the demo-city simulation |
-| `FALLBACK` | Primary source failing — substitute estimate or last known values (message says which) |
+| `FALLBACK` | Primary source failing, substitute estimate or last known values (message says which) |
 | `DELAYED` | No update for > 3 expected intervals |
-| `STALE` | No update for > 8 intervals — not used as current |
+| `STALE` | No update for > 8 intervals, not used as current |
 | `UNAVAILABLE` | No usable data |
 | `ARCHIVE` | Recorded data in replay mode |
 
@@ -274,7 +274,7 @@ Area statuses every 15 seconds over the last 30 minutes:
 
 ## Simulation (demo controls)
 
-Events change the **synthetic city**, not the analysis — CityPulse has to detect them itself.
+Events change the **synthetic city**, not the analysis: CityPulse has to detect them itself.
 
 ### GET `/api/simulation/status`
 
@@ -304,7 +304,7 @@ and the custom slider list.
 `multi_event` (alias `full`). Resets the city, then plays the preset's timed effects. Storyline
 beats are ticked only when the analysis output shows them. Unknown name → `400` listing valid ids.
 
-`instant` (default `true`): the situation is shown straight away — the scenario starts ~2 minutes
+`instant` (default `true`): the situation is shown straight away; the scenario starts ~2 minutes
 in the past and the pipeline is fast-forwarded through that time with the same feeds and analysis
 as live (the request takes ~2 s). `false` starts it now, to watch it unfold with pause and 2×/4×.
 
@@ -323,7 +323,7 @@ accelerated; analysis keeps running on the real clock.
 { "zone_id": "C2-9", "values": { "rain": 1.0, "traffic": 0.6 }, "duration_s": 900 }
 ```
 
-`values` keys: `rain`, `flooding`, `traffic`, `accident`, `outage`, `air`, each 0–1.5 (0 removes it).
+`values` keys: `rain`, `flooding`, `traffic`, `accident`, `outage`, `air`, each 0-1.5 (0 removes it).
 Replaces any previous custom scenario.
 
 ### POST `/api/simulation/event`
@@ -336,8 +336,8 @@ Replaces any previous custom scenario.
 |---|---|
 | `event` | `heavy_rain`, `flooding`, `traffic_spike`, `road_accident`, `incident_cluster`, `poor_air` |
 | `zone_id` | a block, e.g. `C2-9` (the event is centred there and reaches neighbouring blocks more weakly) |
-| `intensity` | 0.2–1.5 (optional, default 1.0) |
-| `duration_s` | 60–3600 (optional, default 600) |
+| `intensity` | 0.2-1.5 (optional, default 1.0) |
+| `duration_s` | 60-3600 (optional, default 600) |
 
 Response: `{"ok": true, "message": "Heavy rain in Walled City (C2-9) started. …"}`
 Invalid input → `422`:
@@ -367,7 +367,7 @@ The browser owns the playhead and asks for frame *i*. Frames are computed once a
 ### GET `/api/replay`
 
 ```json
-{ "available": true, "name": "Recorded storm — 23 Sep, 18:18 (local time)",
+{ "available": true, "name": "Recorded storm - 23 Sep, 18:18 (local time)",
   "description": "Recorded data from the archive, replayed through the same analysis engine and monitoring agent that run live. Nothing here is live.",
   "focus_zone": "C3-8", "start": "2026-09-23T12:28:00+00:00", "end": "2026-09-23T14:10:00+00:00",
   "step_seconds": 60,
@@ -396,7 +396,7 @@ Same shape as `/api/zones/{zone_id}`, at that recorded minute (series in 60-seco
 | 404 | Unknown zone, replay unavailable, frame out of range | `{"detail": "…"}` |
 | 422 | Request body/query failed validation | `{"error": "invalid_request", "detail": ["field: message"]}` |
 | 500 | Unexpected server error | `{"error": "internal_error", "detail": "Something went wrong on our side. The rest of CityPulse keeps running."}` |
-| 503 | Pipeline still starting | `{"detail": "CityPulse is starting up — try again in a few seconds."}` |
+| 503 | Pipeline still starting | `{"detail": "CityPulse is starting up, try again in a few seconds."}` |
 
 Stack traces, file paths and secrets never appear in responses; details go to the server log only.
 
@@ -404,7 +404,7 @@ Stack traces, file paths and secrets never appear in responses; details go to th
 
 - No authentication: the data is public-information by design and the demo contains no
   personal data. Before a real deployment, protect the `POST /api/simulation/*` endpoints
-  (or disable them) — they exist for demos.
+  (or disable them): they exist for demos.
 - CORS allows only the origins in `CITYPULSE_CORS_ORIGINS` and only `GET`/`POST`.
 - All input is validated by Pydantic models; zone and feed IDs are checked against fixed lists.
 - API keys (e.g. `ANTHROPIC_API_KEY`) are read from the environment and never returned.

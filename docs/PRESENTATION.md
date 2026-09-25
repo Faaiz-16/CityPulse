@@ -1,4 +1,4 @@
-# CityPulse — Presentation
+# CityPulse: Presentation
 
 **Format:** 10 slides (16:9), made to support the 7-minute presentation + live demo slot
 described in [DEMO.md](DEMO.md). The slides take about 3 minutes in total; the rest is the live
