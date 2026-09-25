@@ -21,11 +21,12 @@ explains them in plain language on a map.
 zone panel gives staff and journalists the evidence behind every flag.
 
 ### 3. How do you meet the "understandable in 10 seconds" requirement?
-**Short:** Five zones, each with one status word, an icon and issue chips, plus a one-sentence
-headline — details are one click away.
-**Detailed:** Status is always colour + icon + word (never colour alone). The map shows only
-aggregated signals by default; raw numbers live in the panel. A red ring pulses on disrupted
-zones to draw the eye.
+**Short:** A map-first screen: normal blocks are just a faint grid, only unusual blocks get
+colour + icon + one word, and at most 4 grouped alerts — details are one click away.
+**Detailed:** Status is always colour + icon + word (never colour alone). Of Jaipur's 225 blocks
+(5 × 5 districts of 3 × 3 blocks), only unusual ones are tinted amber or red, with one short label
+per hotspot, and alerts are grouped per hotspot. Clicking a block opens the area panel: status,
+what you'd notice and what to do; raw numbers and evidence sit behind *Explain in detail*.
 
 ### 4. How is this different from existing city dashboards?
 **Short:** They show data; we show *fused meaning* — what's unusual, what may be related, and
@@ -264,7 +265,8 @@ checks it reaches its outcome; the poor-air preset deliberately ends with *no ca
 run at 2×/4× (`SimClock`) while analysis windows stay on the real clock.
 
 ### 35. What are the limitations?
-**Short:** Synthetic data and demonstration zones; hand-written relationship rules; we can show
+**Short:** Synthetic data and a demonstration grid of districts and blocks, not official wards;
+hand-written relationship rules; we can show
 overlap, never cause.
 **Detailed:** Thresholds aren't calibrated on real data; the AI path depends on an API key;
 replay covers one recorded event; no 3D view yet.
