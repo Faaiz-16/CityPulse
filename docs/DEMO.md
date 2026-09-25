@@ -1,4 +1,4 @@
-# CityPulse — Demo Guide (3–5 minutes)
+# CityPulse — Demo Guide (7-minute judging slot)
 
 A reliable, rehearsable walkthrough for judges. Everything runs locally; the only internet
 dependency is the map background (the demo still works without it).
@@ -14,6 +14,24 @@ refreshing between situations.
 
 ---
 
+## The 7-minute slot
+
+Each team gets **7 minutes for the presentation and live demo, then 3 minutes of Q&A**. Spend most
+of the time on the working product. The slides only support it.
+
+| Time | Part | What to do | Slides |
+|---|---|---|---|
+| 0:00–0:30 | Brief introduction | Who we are, and the problem in one breath | 1–2 |
+| 0:30–1:45 | Presentation | Proposed solution, system architecture, key features. Point, don't read | 3–5 |
+| 1:45–5:15 | **Live demo** | Switch to the browser and run the [live demo timeline](#live-demo-timeline-about-35-minutes) below: the end-to-end user journey and key features | 6–7 only as a backup |
+| 5:15–6:30 | Technical walkthrough | Engineering decisions and measured numbers. Optionally open `http://localhost:8000/api/readings?zone_id=C2-9&metric=rain_mm_h` to show normalized records, or `http://localhost:8000/docs` for the API | 8 |
+| 6:30–7:00 | Future scope and close | Planned next steps, thank you, GitHub QR code | 9–10 |
+| 7:00–10:00 | Q&A | Likely questions and answers: [JUDGE_QA.md](JUDGE_QA.md) | — |
+
+Have the deck open in presenter view on one screen and the app full-screen in a browser tab, so
+switching takes one keystroke. If the live demo fails, slides 6 and 7 are real screenshots of the
+same journey.
+
 ## Before you present (5 minutes earlier)
 
 1. Start the backend and frontend (see [SETUP.md](SETUP.md)), or one-server mode. The very first
@@ -28,7 +46,9 @@ Pre-flight checklist:
 - [ ] Active alerts: *All clear — nothing unusual right now.*
 - [ ] Laptop won't sleep; notifications off
 
-## Timeline at a glance
+## Live demo timeline (about 3.5 minutes)
+
+Times are from the start of the demo. If you are running long, skip step 5 (multi-event).
 
 | Time | What you do | What judges see |
 |---|---|---|

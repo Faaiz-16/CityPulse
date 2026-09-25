@@ -1,140 +1,50 @@
 # CityPulse — Presentation
 
-**Format:** 14 slides, about **8 minutes** including a ~3.5-minute live demo (slide 5).
-A **5-minute cut** is marked ✂ (skip those slides and shorten the demo to the 2-minute version in
-[DEMO.md](DEMO.md)). Speaker notes are in [PITCH_SCRIPT.md](PITCH_SCRIPT.md).
+**Format:** 10 slides (16:9), made to support the 7-minute presentation + live demo slot
+described in [DEMO.md](DEMO.md). The slides take about 3 minutes in total; the rest is the live
+product. Speaker notes are in each slide's notes pane, and [PITCH_SCRIPT.md](PITCH_SCRIPT.md) has
+the same text in one place.
 
-Design guidance: dark background to match the app, one idea per slide, big text, a screenshot or
-diagram on most slides. Use the app's colours for status: green `#34d399`, amber `#fbbf24`,
-red `#f87171`, "possible link" purple `#c084fc`.
+The deck covers every section the hackathon asks for:
+
+| Required section | Slide(s) |
+|---|---|
+| Problem statement | 2 |
+| Proposed solution | 3 |
+| System architecture | 4 |
+| Key features | 5 |
+| Demo screenshots | 6, 7 |
+| Future scope | 9 |
+
+Design: dark background to match the app, one idea per slide, real screenshots on most slides,
+and few words. Colours follow the app: teal for normal and CityPulse itself, amber for
+attention, red for disruption, violet for "possible link" and "what may happen next".
 
 ---
 
-## Slide 1 — CityPulse
-
-**Understand what's happening in your city — at a glance.**
-
-- Visual: full-screen screenshot of the Jaipur grid with the Walled City hotspot red
-- Footer: team name · AmiHacks Track B
-
-## Slide 2 — The problem: civic information is fragmented
-
-- Weather app · transit app · 311 portal · air-quality site · utility outage map
-- Residents learn about the flooded underpass **after** they're stuck in it
-- City staff spot patterns only after someone escalates a complaint
-- Existing dashboards are built for analysts, not the public
-
-Visual: five disconnected app icons, each saying something different.
-
-## Slide 3 — Why data fusion is hard ✂
-
-| Feed | Time format | Units | Location |
+| # | Slide | Visual | Key message |
 |---|---|---|---|
-| Rain gauges | `+05:30` offset | mm per 15 min, °F | station ID |
-| Road sensors | epoch milliseconds | raw speed | sensor ID |
-| Bus operator | `24/09/2026 15:07` | seconds late | "EST" area code |
-| 311 reports | UTC `Z` | free-text category | lat/long + personal data |
-| Water sensors | epoch seconds | mm inside a JSON string | MQTT topic |
+| 1 | **CityPulse** (title) | Map of Jaipur with the Walled City hotspot | Understand what's happening in your city at a glance. Team name and members |
+| 2 | **Problem statement**: "City data exists. The picture doesn't." | Five feeds, each with its own format problem, pointing at a confused resident | Data is scattered, not connected, and arrives too late. The real challenge is fusing it into one picture people can trust |
+| 3 | **Proposed solution**: "Five messy feeds in. One live, honest map out." | Feed icons → CityPulse → screenshot of the area panel; tiles for 225 blocks, 3 s, 10 s | One live map, updated every 3 s, readable in about 10 s |
+| 4 | **System architecture**: "One pipeline, every 3 seconds" | Diagram: 5 feeds → backend (feed manager, normalization, store, analysis engine, CityState, plus summary, agent, demo and replay) → REST API → React frontend | The API serves one pre-computed state; the same engine runs live, demo and replay. Same diagram as [`architecture.png`](architecture.png) |
+| 5 | **Key features**: "Six things CityPulse does" | Six cards, each a real screenshot | Live map · spots the unusual · possible links, not causes · what may happen next · plain-language summary · survives feed failures |
+| 6 | **Demo screenshots**: the working product | Full app screenshot with 4 numbered callouts; Live, Demo and Replay cards | It's a working product in three modes on one engine |
+| 7 | **Demo screenshots**: end-to-end journey | 4 screenshots: pick a situation → see the hotspot → open the block → read the summary | From a situation to advice in four clicks. Backup if the live demo fails |
+| 8 | **Technical implementation** | 5 engineering decisions and 6 measured numbers, plus a technology row | Pre-computed state, one validated data model, robust statistics, correlation never causation, graceful failure |
+| 9 | **Future scope**: "From working prototype to city service" | "Today" checklist → 6 "Next" cards, marked as planned, not built | Real feeds, resident alerts, learned links, city-scale cloud, deeper replay, 3D view |
+| 10 | **Thank you** | Links (GitHub, docs, deployment status, team) and a GitHub QR code | Questions, or more of the live demo |
 
-**And the real challenge:** a genuine link vs a coincidence — and saying which, honestly.
+## Every number on the slides
 
-## Slide 4 — Our solution: one honest pulse, map first
+All numbers were measured on the running prototype (simulated data) or come from the code:
+225 blocks · 5 feeds · 3-second tick · 45 minutes kept live · 3 days of history · all blocks
+analysed in under 0.1 s · a demo situation on screen in about 1.4 s · heavy-rain demo: rain
+detected at 20 s and a possible disruption at 100 s · no red blocks in two simulated quiet rush
+hours · 128 automated tests.
 
-```
-5 feeds → normalize → one data model → detect → possible links → explain → map
-```
+## Before presenting
 
-- **Map** answers *where · what · how serious* in 10 seconds
-- **Zone panel** answers *why might this be happening*
-- **Plain language** · **monitoring agent** · **survives feed failures**
-
-Visual: `docs/screenshots/normal.jpg` with callouts: pulse heart, zone labels, alerts, Demo button.
-
-## Slide 5 — Live demo
-
-Switch to the browser. Follow [DEMO.md](DEMO.md): calm city → Demo → Heavy rainfall at 2× →
-amber → red → click the alert → zone story → weather outage → replay.
-
-## Slide 6 — Architecture
-
-```
-CIVIC SOURCES → FEED MANAGER (fallbacks, health) → NORMALIZATION → COMMON DATA MODEL
-  → ROLLING STORE → ANALYSIS ENGINE → STRUCTURED CIVIC STATE
-                                       ├─ MAP / DASHBOARD
-                                       ├─ PLAIN-LANGUAGE SUMMARY (templates + checked AI)
-                                       └─ MONITORING AGENT
-```
-
-- One pipeline tick every 3 s; the API only serves the latest state
-- FastAPI · SQLite · React · Leaflet — runs on a laptop, no paid services
-
-## Slide 7 — Normalization: five formats → one model ✂
-
-- Every record → `CivicReading` or `CivicIncident`
-- Timestamps → UTC · units → standard · IDs → zones · values validated
-- Bad records rejected **one by one**; good ones keep flowing
-- Personal fields dropped at ingestion — never stored
-
-Visual: one messy raw record on the left, the clean normalized record on the right.
-
-## Slide 8 — Detection: normal → unusual → possibly related
-
-1. **Baseline:** what's normal for *this zone at this time of day* (median, robust to past storms)
-2. **Anomaly:** current vs baseline vs threshold — e.g. traffic 147 vs 100 = **+47 % → flagged**
-3. **Report spikes:** must be statistically unlikely by chance (Poisson test)
-4. **Possible relationship:** logical rule + same zone + same 10-min window + timing fits
-5. **Possible impact:** early warning *before* the threshold · potential disruption after
-
-## Slide 9 — Honest by design
-
-| Observed | Possible relationship | Not claimed |
-|---|---|---|
-| "Rainfall 26 mm/h" | "may be related" + evidence + strength | "rain caused traffic" |
-
-- Unrelated spike → *"insufficient evidence to suggest any explanation"*
-- Missing feed → *"cannot check whether rain is involved"*
-- AI text is rejected if it invents a number or uses causal language
-
-## Slide 10 — Built to survive failures ✂
-
-- LIVE · SIMULATED · FALLBACK · DELAYED · STALE · UNAVAILABLE — always visible
-- Live API down → labelled fallback estimate, never shown as live
-- Missing data → "not assessed", never zero
-- Database down → live pulse keeps running
-- AI down → rule-based summary (always generated first)
-
-## Slide 11 — Innovation layer
-
-| From the brief | CityPulse |
-|---|---|
-| AI/ML anomaly & correlation | Robust baselines, Poisson test, co-movement + lead/lag |
-| NLP | Grounded plain-language summaries with a fact-checker |
-| Agentic AI | Monitoring agent: checks → decides → alerts → resolves |
-| Creative pulse | Heartbeat strip, heat-map timeline, live signal stream |
-| Geospatial / IoT | Traffic, rain, air and water-level sensors on the map |
-| Historical replay | Yesterday's storm, minute by minute, same engine |
-
-## Slide 12 — Impact and path to a real city
-
-- **Residents:** know before you go · **city staff:** see patterns early · **journalists:**
-  evidence, not rumour · **responders:** where to look first
-- Real deployment: swap synthetic feeds for real ones (311 portals, GTFS-Realtime transit,
-  weather and air-quality APIs, city sensors) — the normalizers, engine, agent and map stay
-- Scale: one pipeline per city district, PostgreSQL, the same API
-
-## Slide 13 — What we built in 24 hours ✂
-
-- 5 feeds · 8 normalizers · anomaly + correlation + risk engine · monitoring agent · replay
-- Map-first React UI: zone story, Demo drawer with 8 scenarios + custom sliders, Insights, replay
-- 121 automated tests · full documentation
-- Stack: Python, FastAPI, SQLAlchemy/SQLite, React, TypeScript, Tailwind, Leaflet, Recharts
-
-**Next:** real feeds, subscriptions for residents, relationship discovery reviewed by humans,
-optional 3D view.
-
-## Slide 14 — CityPulse
-
-**Disconnected signals → one honest pulse.**
-Where. What. How serious. And only *possibly* why.
-
-Thank you — questions?
+- Replace `[Team name]` and `[Member 1…4]` on slides 1 and 10, and fill in the team table in the
+  [README](../README.md#team).
+- Keep a PDF copy of the deck in case the projector laptop can't open the `.pptx` file.

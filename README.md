@@ -9,6 +9,19 @@ explains them in plain language, without ever claiming one thing caused another.
 
 > Built for **AmiHacks — Track B: "CityPulse: The Live Civic Health Dashboard"**.
 
+## Hackathon deliverables
+
+| Deliverable | Where |
+|---|---|
+| GitHub repository | <https://github.com/Faaiz-16/CityPulse> |
+| Source code | [`backend/`](backend) (Python · FastAPI) and [`frontend/`](frontend) (React · TypeScript) |
+| Architecture diagram | [Below](#architecture) · [`docs/architecture.png`](docs/architecture.png) · details in [ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| Deployment | No public deployment yet. It runs locally in two commands, or as one server ([SETUP.md § 5](docs/SETUP.md#5-one-server-mode-for-judging-or-deployment)) |
+| README documentation | This file, plus the [documentation](#documentation) in `docs/` |
+| Team contribution details | [Team](#team) |
+| Presentation (PPT / PDF) | 10 slides: problem, solution, architecture, features, demo screenshots, future scope ([PRESENTATION.md](docs/PRESENTATION.md)) |
+| Demo | [DEMO.md](docs/DEMO.md): the 7-minute presentation + live demo slot |
+
 ---
 
 ## The problem
@@ -40,6 +53,8 @@ trustworthy, finding genuine links rather than coincidences, and **explaining th
 | **Survive failures** | Any feed can fail, lag or send garbage; the rest keeps working and the UI says exactly what is missing |
 
 ## Architecture
+
+![CityPulse system architecture](docs/architecture.png)
 
 ```
 5 civic feeds ─► feed manager (fallbacks, health) ─► normalization ─► common data model
@@ -264,8 +279,8 @@ File-by-file explanation: [docs/FILE_GUIDE.md](docs/FILE_GUIDE.md).
 | [DATABASE.md](docs/DATABASE.md) | Tables, indexes, seeding, migrations |
 | [FILE_GUIDE.md](docs/FILE_GUIDE.md) | What each file does |
 | [REQUIREMENTS_MATRIX.md](docs/REQUIREMENTS_MATRIX.md) | Brief requirement → feature → code → test → demo |
-| [DEMO.md](docs/DEMO.md) | Timed 3–5 minute demo script and recovery plan |
-| [PRESENTATION.md](docs/PRESENTATION.md) · [PITCH_SCRIPT.md](docs/PITCH_SCRIPT.md) | Slides and what to say |
+| [DEMO.md](docs/DEMO.md) | The 7-minute judging slot: timed run sheet, live demo steps and recovery plan |
+| [PRESENTATION.md](docs/PRESENTATION.md) · [PITCH_SCRIPT.md](docs/PITCH_SCRIPT.md) | The 10-slide deck and what to say |
 | [JUDGE_QA.md](docs/JUDGE_QA.md) | 36 likely judge questions with answers |
 | [FINAL_CHECKLIST.md](docs/FINAL_CHECKLIST.md) | The brief's validation checklist, with evidence for every item |
 
@@ -291,7 +306,10 @@ File-by-file explanation: [docs/FILE_GUIDE.md](docs/FILE_GUIDE.md).
 
 | Name | Role | Contributions |
 |---|---|---|
-| _to be filled in by the team_ | | |
+| [Member 1] | [e.g. Backend & data pipeline] | [e.g. feed simulation, normalization, common data model] |
+| [Member 2] | [e.g. Analysis & AI] | [e.g. baselines, anomalies, correlation, forecast, summaries, agent] |
+| [Member 3] | [e.g. Frontend & map] | [e.g. React UI, Leaflet map, drawers, replay] |
+| [Member 4] | [e.g. Testing, docs & pitch] | [e.g. tests, documentation, presentation, demo] |
 
 ## License
 
