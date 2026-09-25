@@ -138,7 +138,7 @@ Full traceability: [docs/REQUIREMENTS_MATRIX.md](docs/REQUIREMENTS_MATRIX.md).
 **Normal city — the 10-second read**
 ![All areas normal](docs/screenshots/normal.jpg)
 
-**Heavy rainfall over the Walled City — a 5-area hotspot, rain cells, congestion on real roads, grouped alerts**
+**Heavy rainfall over the Walled City — a 13-block hotspot (9 red, 4 amber), rain cells, congestion on real roads, grouped alerts**
 ![Walled City in possible disruption](docs/screenshots/disruption.jpg)
 
 **Area panel — the 10-second answer, with "Explain in detail" for the evidence**
