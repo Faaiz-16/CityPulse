@@ -306,12 +306,16 @@ File-by-file explanation: [docs/FILE_GUIDE.md](docs/FILE_GUIDE.md).
 
 **Exception Handler**
 
-| Name | Role | Contributions |
-|---|---|---|
-| Faaiz Ali | Team leader · full-stack developer | Leads the project; full-stack development across the backend (Python · FastAPI) and the frontend (React · TypeScript) |
-| Kunal Singh | Backend developer | Backend development (Python · FastAPI) |
-| Sarthak Bhadke | Backend developer | Backend development (Python · FastAPI) |
-| Siddhi Ingale | Frontend developer | Frontend development (React · TypeScript) |
+| Name | GitHub | Role | Contributions |
+|---|---|---|---|
+| Faaiz Ali | [@Faaiz-16](https://github.com/Faaiz-16) | Team leader · full-stack developer | Leads the project; full-stack development across the backend (Python · FastAPI) and the frontend (React · TypeScript) |
+| Kunal Singh | [@hide0203](https://github.com/hide0203) | Backend developer | **Standardization and fallback:** normalizing every feed into one common data model ([`backend/app/normalization/`](backend/app/normalization)) and the fallback chain and feed health when a feed fails ([`backend/app/services/feed_manager.py`](backend/app/services/feed_manager.py)) |
+| Sarthak Bhadke | [@sarthakbhadke](https://github.com/sarthakbhadke) | Backend developer | **Data feeds and API:** the five data feeds ([`backend/app/data_sources/`](backend/app/data_sources)) and the REST API ([`backend/app/api/routes.py`](backend/app/api/routes.py)) |
+| Siddhi Ingale | | Frontend developer | Frontend development (React · TypeScript) |
+
+The team built CityPulse together on one machine, so the history before this section is under one
+account. Team members are credited as co-authors on the commit that adds this section, and later
+work is committed from their own accounts.
 
 ## License
 
