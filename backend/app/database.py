@@ -39,7 +39,7 @@ class ZoneRow(Base):
     id: Mapped[str] = mapped_column(String(8), primary_key=True)
     number: Mapped[int] = mapped_column(Integer)
     name: Mapped[str] = mapped_column(String(64))
-    short_name: Mapped[str] = mapped_column(String(32))
+    short_name: Mapped[str] = mapped_column(String(64))
     boundary: Mapped[dict] = mapped_column(JSON)  # GeoJSON polygon
 
 

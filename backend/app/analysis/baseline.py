@@ -39,13 +39,19 @@ DEFAULT_BASELINES: dict[str, float] = {
     "aqi": 85.0,
     "water_level_cm": 1.5,
 }
-DEFAULT_INCIDENT_RATE_PER_MIN = {"incident_reports": 0.25, "waterlogging_reports": 0.006,
-                                 "outage_signal_reports": 0.012, "accident_reports": 0.01}
+# Per block (~1.5 km), so these are small.
+DEFAULT_INCIDENT_RATE_PER_MIN = {"incident_reports": 0.008, "waterlogging_reports": 0.0002,
+                                 "outage_signal_reports": 0.0004, "accident_reports": 0.0004}
 
 
 def slot_of(t: datetime, tz: ZoneInfo) -> int:
     local = t.astimezone(tz)
     return (local.hour * 60 + local.minute) // 30
+
+
+# Fitted results for history lists this process has already fitted (the lists are cached by
+# persistence, so identity is a safe key; the entry keeps them alive).
+_FIT_CACHE: dict[tuple[int, int, str], tuple[object, object, dict, dict, float]] = {}
 
 
 class BaselineModel:
@@ -61,6 +67,17 @@ class BaselineModel:
         readings: list[tuple[str, str, datetime, float]],  # (zone, metric, ts, value)
         incidents: list[tuple[str, str, datetime]],  # (zone, category, ts)
     ) -> "BaselineModel":
+        key = (id(readings), id(incidents), str(self.tz))
+        if readings and key in _FIT_CACHE:
+            _, _, self._continuous, self._incident_rate, self.history_days = _FIT_CACHE[key]
+            return self
+        self._fit(readings, incidents)
+        if readings:
+            _FIT_CACHE.clear()
+            _FIT_CACHE[key] = (readings, incidents, self._continuous, self._incident_rate, self.history_days)
+        return self
+
+    def _fit(self, readings, incidents) -> None:
         buckets: dict[tuple[str, str, int], list[float]] = defaultdict(list)
         first, last = None, None
         for zone, metric, ts, value in readings:
@@ -107,7 +124,6 @@ class BaselineModel:
                     ]
                     if per_day:
                         self._incident_rate[(zone, metric, slot)] = statistics.median(per_day)
-        return self
 
     # ----------------------------------------------------------------- lookup
     def continuous(self, zone_id: str, metric: str, t: datetime) -> Baseline:

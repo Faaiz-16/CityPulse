@@ -69,8 +69,10 @@ source .venv/bin/activate
 python -m pytest -q
 ```
 
-Expected: `119 passed`. Tests use a temporary database and a simulated clock, so they are fast
-and deterministic.
+Expected: `128 passed` in about 4 minutes. Tests use a temporary database and a simulated clock,
+so they are deterministic; the first test builds history for the 225 Jaipur blocks (~25 s).
+
+The first backend start does the same (~25 s, once); later starts reuse the stored history.
 
 Frontend type-check and production build:
 
@@ -96,8 +98,8 @@ to serve a build from another folder.)
 `CITYPULSE_LIVE_APIS=true` pulls real weather and air quality for the demo zones from Open-Meteo
 (free, no key). Weather updates every 15 minutes and air quality hourly upstream, and CityPulse
 keeps each value "current" for that long. Live AQI is judged only against the health threshold
-(AQI ≥ 150), because the learned baselines come from synthetic history. Real Delhi air quality is
-often unhealthy, so expect amber zones with the note "insufficient evidence to suggest any
+(AQI ≥ 150), because the learned baselines come from synthetic history. Real Jaipur air quality can
+be unhealthy, so expect amber areas with the note "insufficient evidence to suggest any
 explanation" — that's the system being honest. Leave live mode **off** for the scripted demo;
 starting a demo event pauses live data automatically and labels feeds SIMULATED.
 

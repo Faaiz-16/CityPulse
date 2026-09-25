@@ -7,8 +7,9 @@
   --bg: #05080d;
   --panel: #0c1118;
   --panel-2: #121a24;
-  --glass: rgba(10, 15, 22, 0.78);
-  --glass-strong: rgba(10, 15, 22, 0.92);
+  /* Opaque enough to read without a backdrop blur (blur over a moving map is costly). */
+  --glass: rgba(10, 15, 22, 0.9);
+  --glass-strong: rgba(10, 15, 22, 0.96);
   --line: rgba(148, 163, 184, 0.16);
   --line-soft: rgba(148, 163, 184, 0.08);
   --text: #e8eef5;
@@ -61,22 +62,17 @@ body {
   background: var(--glass);
   border: 1px solid var(--line);
   border-radius: 14px;
-  backdrop-filter: blur(14px) saturate(1.2);
-  -webkit-backdrop-filter: blur(14px) saturate(1.2);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 }
 .glass-strong {
   background: var(--glass-strong);
   border: 1px solid var(--line);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
 }
 /* kept for components that used the old name */
 .panel {
   background: var(--glass);
   border: 1px solid var(--line);
   border-radius: 14px;
-  backdrop-filter: blur(14px);
 }
 
 .label-caps {
@@ -100,13 +96,13 @@ body {
 /* Standard OSM tiles turned into a deep blue-black city: streets and water stay legible,
    but everything is quieter than the data drawn on top. */
 .leaflet-tile-pane {
-  filter: invert(1) hue-rotate(195deg) brightness(0.72) contrast(1.12) saturate(0.6);
+  filter: invert(1) hue-rotate(195deg) brightness(0.82) contrast(1.08) saturate(0.6);
 }
 .map-vignette {
   pointer-events: none;
   background:
-    radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(3, 6, 10, 0.75) 100%),
-    linear-gradient(to bottom, rgba(3, 6, 10, 0.55), transparent 16%, transparent 82%, rgba(3, 6, 10, 0.6));
+    radial-gradient(ellipse at 50% 45%, transparent 62%, rgba(3, 6, 10, 0.55) 100%),
+    linear-gradient(to bottom, rgba(3, 6, 10, 0.45), transparent 14%, transparent 86%, rgba(3, 6, 10, 0.45));
 }
 .leaflet-control-attribution {
   background: rgba(5, 8, 13, 0.6) !important;
@@ -142,35 +138,18 @@ body {
   background: none;
   border: none;
 }
-
-/* Glows are reserved for things that matter (level 1–2 information). */
-.cp-glow-red {
-  filter: drop-shadow(0 0 10px rgba(248, 113, 113, 0.85));
+/* Map labels and icons scale with the zoom (see LabelScale in CityMap): small at city level so
+   they don't hide the map, full size when zoomed in. Far out, labels show only the place name. */
+.cp-scaled {
+  transform-origin: center;
+  transition: transform 0.25s ease-out;
 }
-.cp-glow-amber {
-  filter: drop-shadow(0 0 6px rgba(251, 191, 36, 0.6));
-}
-.cp-rain-drop {
-  filter: drop-shadow(0 0 5px rgba(56, 189, 248, 0.95));
-}
-.cp-traffic-hot {
-  filter: drop-shadow(0 0 6px rgba(248, 113, 113, 0.9));
-}
-.cp-traffic-warm {
-  filter: drop-shadow(0 0 4px rgba(251, 146, 60, 0.7));
-}
-.cp-haze {
-  filter: blur(14px);
+.cp-zoom-far .cp-label-sub {
+  display: none;
 }
 
-/* A disrupted zone "breathes": the only continuous animation on the map. */
-@keyframes cp-breathe {
-  0%, 100% { stroke-opacity: 1; fill-opacity: 0.2; }
-  50% { stroke-opacity: 0.55; fill-opacity: 0.3; }
-}
-.cp-zone-red {
-  animation: cp-breathe 2.4s ease-in-out infinite;
-}
+/* Map vectors are drawn on a canvas (fast zooming), so glows are drawn as a wide, faint stroke
+   under each line instead of CSS filters. */
 
 @keyframes cp-heart {
   0%, 60%, 100% { transform: scale(1); }
@@ -209,7 +188,9 @@ input[type="range"].cp-range {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cp-zone-red,
+  .cp-scaled {
+    transition: none;
+  }
   .cp-heart,
   .cp-fade-in,
   .cp-slide-left,

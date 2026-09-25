@@ -94,6 +94,18 @@ export interface ZoneState {
   incident_counts: Record<string, number>;
   recent_incidents: IncidentView[];
   anchor: [number, number];
+  predictions: Prediction[]; // possible next impacts here (a forecast, not a certainty)
+}
+
+export interface Prediction {
+  kind: "flooding" | "power_cut" | "traffic" | "bus_delays" | "air_quality";
+  label: string;
+  likelihood: "low" | "medium" | "high";
+  score: number;
+  horizon: string;
+  reason: string;
+  source_zone: string;
+  nearby: boolean;
 }
 
 export interface FeedHealth {
@@ -169,6 +181,8 @@ export interface ScenarioPreset {
   name: string;
   tagline: string;
   zone_id: string;
+  place: string;
+  ready_s: number;
   severity: "high" | "moderate" | "low";
   duration_s: number;
   feeds: string[];
@@ -228,9 +242,28 @@ export interface ZoneBoundary {
   number: number;
   name: string;
   short_name: string;
+  row: number; // global block row, 0 (north) … 14
+  col: number; // global block column, 0 (west) … 14
+  district: string; // "C2"
+  district_name: string; // "Walled City"
   centroid: [number, number];
   anchor: [number, number];
   boundary: { type: "Polygon"; coordinates: number[][][] };
+}
+
+export interface Road {
+  cell: string;
+  kind: "major" | "minor";
+  name: string;
+  path: [number, number][];
+}
+
+export interface MapInfo {
+  city: string;
+  // 5 × 5 districts (A–E, 1–5), each 3 × 3 blocks → a 15 × 15 block grid
+  grid: { north: number; south: number; west: number; east: number; rows: number; cols: number; districts: number; blocks: number; col_letters: string };
+  roads: Road[];
+  roads_attribution: string;
 }
 
 export interface SeriesPoint {

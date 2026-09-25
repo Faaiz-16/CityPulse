@@ -1,4 +1,4 @@
-import type { CityState, ReplayMeta, Sensor, TimelineEntry, ZoneBoundary, ZoneDetail } from "../types";
+import type { CityState, MapInfo, ReplayMeta, Sensor, TimelineEntry, ZoneBoundary, ZoneDetail } from "../types";
 
 // In development Vite proxies /api to the backend. For a deployed build, set VITE_API_BASE.
 const BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/$/, "") ?? "";
@@ -36,6 +36,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   dashboard: () => request<CityState>("/api/dashboard"),
   zones: () => request<ZoneBoundary[]>("/api/zones"),
+  map: () => request<MapInfo>("/api/map", { signal: AbortSignal.timeout(20000) }),
   zone: (id: string) => request<ZoneDetail>(`/api/zones/${id}`),
   sensors: () => request<Sensor[]>("/api/sensors"),
   timeline: () => request<TimelineEntry[]>("/api/timeline"),
@@ -49,8 +50,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ event, zone_id }),
     }),
-  runScenario: (name: string) =>
-    request<{ message: string }>("/api/simulation/scenario", { method: "POST", body: JSON.stringify({ name }) }),
+  // Instant (default): the backend fast-forwards the scenario, so this takes a few seconds.
+  runScenario: (name: string, instant = true) =>
+    request<{ message: string }>("/api/simulation/scenario", {
+      method: "POST", body: JSON.stringify({ name, instant }), signal: AbortSignal.timeout(30000),
+    }),
   playback: (action: "pause" | "resume" | "speed", speed?: number) =>
     request<{ message: string }>("/api/simulation/playback", { method: "POST", body: JSON.stringify({ action, speed }) }),
   custom: (zone_id: string, values: Record<string, number>, duration_s: number) =>

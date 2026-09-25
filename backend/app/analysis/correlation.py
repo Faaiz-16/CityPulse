@@ -6,7 +6,7 @@ needs all of the following:
   1. a **logical rule** saying the two signals can plausibly be connected
      (rain → traffic is on the list; rain → noise complaints is not),
   2. both signals **anomalous** (meaningfully off their baseline),
-  3. the **same zone**,
+  3. the **same area**,
   4. the **same rolling time window** (default 10 minutes),
   5. timing that fits (the "driver" did not start clearly after the "response").
 
@@ -170,7 +170,7 @@ def evaluate_zone(z: ZoneSignals, s: Settings) -> tuple[list[Relationship], list
         strength: Strength = "strong" if score >= 0.8 else "moderate" if score >= 0.6 else "weak"
 
         evidence = [describe(driver)] + [describe(r) for r in anomalous] + [describe(r) for r in supporting]
-        evidence.append(f"Same zone: {z.zone_name}")
+        evidence.append(f"Same area: {z.zone_name}")
         evidence.append(f"Overlapping {s.rolling_window_minutes}-minute window")
         if lead_lag:
             evidence.append(lead_lag)
@@ -185,7 +185,7 @@ def evaluate_zone(z: ZoneSignals, s: Settings) -> tuple[list[Relationship], list
                          f"{z.zone_name}, but the evidence is insufficient to suggest a strong relationship.")
         else:
             statement = (f"{rule.driver_phrase.capitalize()} and {rule.response_phrase} are occurring in the same "
-                         f"zone and time window. These signals may be related.")
+                         f"area and time window. These signals may be related.")
 
         relationships.append(Relationship(
             id=f"{z.zone_id}:{rule.id}", zone_id=z.zone_id, rule_id=rule.id, title=rule.title,

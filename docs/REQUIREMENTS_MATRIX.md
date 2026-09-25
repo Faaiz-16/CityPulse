@@ -16,7 +16,7 @@ when the feature has been built and verified (automated tests + manual run in th
 | 3 | Detect basic anomalies or correlations | Robust baselines (median/MAD by time of day) → deviation, threshold, severity; rule-based rolling-window correlation with co-movement statistic | M4 `backend/app/analysis/` | `test_analysis.py` | Trigger heavy rain → anomalies, then a "possible link" | ✅ Done |
 | 4 | Live, glanceable dashboard or map | Map-first UI: faint normal zones, amber attention, highlighted red disruption areas with word labels; rain cells, congestion corridors, incident clusters; pulse heart; ≤ 4 alerts; details in drawers; 3-second polling | M8–M11 `frontend/` | Manual + build check | Opening screen | ✅ Done |
 | 5 | Plain-language summary — what's happening and why it matters | Template summary (always available) + optional grounded LLM rewrite with numeric grounding validator | M6 `backend/app/ai/` | `test_ai_agent_simulation.py` | "Right now" panel | ✅ Done |
-| 6 | *Optional:* threshold alerting | Monitoring agent opens/resolves alerts with observed vs possible-link wording | M12 `backend/app/agent/` | `test_ai_agent_simulation.py` | Alert appears when Zone 3 goes RED | ✅ Done |
+| 6 | *Optional:* threshold alerting | Monitoring agent opens/resolves alerts with observed vs possible-link wording | M12 `backend/app/agent/` | `test_ai_agent_simulation.py` | Alert appears when the Walled City (C2-9) goes RED | ✅ Done |
 | 7 | *Optional:* historical replay | Replays a recorded storm from the stored archive minute by minute through the same analysis engine and agent; scrubber + key moments | M13 `backend/app/simulation/replay.py`, `frontend/src/components/ReplayBar.tsx` | `test_replay.py` | "Replay storm" → play / jump to "Possible relationship found" | ✅ Done |
 
 ## 2. Constraints & Considerations (PDF §7)
@@ -26,7 +26,7 @@ when the feature has been built and verified (automated tests + manual run in th
 | Public or synthetic data | Deterministic synthetic city model (default); optional Open-Meteo weather/air-quality (free, no key) | M2, M5 | `test_resilience.py` | Feed chips show SIMULATED / LIVE honestly | ✅ Done |
 | Degrade gracefully if a feed is missing or delayed | Per-feed status (LIVE, SIMULATED, FALLBACK, DELAYED, STALE, UNAVAILABLE); live→synthetic fallback; analysis says "cannot assess" instead of guessing | M5 `backend/app/services/feed_manager.py` | `test_resilience.py` | Demo panel → Weather → Outage | ✅ Done |
 | Privacy — no identifying individuals | Incidents carry only category, coarse location, time; no names/phones; normalizer drops unknown fields | M3 | `test_normalization.py::test_incident_personal_fields_are_dropped` | FILE_GUIDE / Q&A | ✅ Done |
-| Understandable in ~10 seconds | Default view = map with 5 zones, one status word each, one-line city summary | M9 | Manual 10-second check | Opening screen | ✅ Done |
+| Understandable in ~10 seconds | Default view = Jaipur map in 5 × 5 districts of 3 × 3 blocks; only unusual blocks are tinted, one label per hotspot, ≤ 4 grouped alerts; area panel answers in 10 seconds with "Explain in detail" behind a button | M9 | Manual 10-second check | Opening screen | ✅ Done |
 | Epistemic honesty — possible links, not causes | Fixed vocabulary ("may be related", "possible link"); banned causal phrases enforced in templates **and** LLM validator; UI labels OBSERVED vs POSSIBLE LINK vs NOT CONFIRMED CAUSE | M4, M6, M10 | `test_ai_agent_simulation.py::test_causal_language_rejected` | "Why this flag?" panel | ✅ Done |
 
 ## 3. Hackathon Scope (PDF §8)

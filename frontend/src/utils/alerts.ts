@@ -1,4 +1,5 @@
-import type { CityState, ZoneState } from "../types";
+import type { CityState } from "../types";
+import { hotspotPlace, hotspots, withoutPlace } from "./grid";
 import { isHealthyFeed } from "./status";
 
 export type AlertLevel = "critical" | "warning" | "notice" | "info";
@@ -28,37 +29,42 @@ const SIGNAL_TITLE: Record<string, { title: string; kind: string }> = {
 const RANK: Record<AlertLevel, number> = { critical: 0, warning: 1, notice: 2, info: 3 };
 
 /**
- * The few alerts worth showing on the map, derived from the analysed civic state:
+ * The few alerts worth showing on the map, derived from the analysed civic state. Touching
+ * unusual blocks are one hotspot, so a storm over nine blocks is one alert, not nine:
  * possible disruptions first, then early warnings and the strongest unusual signals,
- * then data problems. Everything else lives in the zone panel and the Insights drawer.
+ * then data problems. Everything else lives in the block panel and the Insights drawer.
  */
 export function deriveAlerts(state: CityState): MapAlert[] {
   const out: MapAlert[] = [];
-  const zones = [...state.zones].sort((a, b) => statusRank(a) - statusRank(b));
-  for (const z of zones) {
-    if (z.status === "GREEN") continue;
-    const place = `Zone ${z.number} — ${z.short_name}`;
-    for (const r of z.risks) {
+  for (const h of hotspots(state.zones)) {
+    const lead = h.lead;
+    const place = hotspotPlace(h);
+    const risk = lead.risks.find((r) => r.kind === "potential_disruption") ?? lead.risks[0];
+    if (risk) {
+      const title = withoutPlace(risk.headline, lead);
       out.push({
-        id: r.id,
-        level: r.kind === "potential_disruption" ? "critical" : "warning",
-        title: r.kind === "potential_disruption" ? r.headline.replace(/ in Zone .*$/, "") : `Early warning: ${r.headline.replace(/ in Zone .*$/, "").toLowerCase()}`,
-        zoneId: z.id,
+        id: `${lead.id}:${risk.kind}`,
+        level: risk.kind === "potential_disruption" ? "critical" : "warning",
+        title: risk.kind === "potential_disruption" ? title : `Early warning: ${title.toLowerCase()}`,
+        zoneId: lead.id,
         place,
-        kind: r.kind === "potential_disruption" ? "disruption" : "warning",
+        kind: risk.kind === "potential_disruption" ? "disruption" : "warning",
       });
     }
-    for (const a of z.anomalies.slice(0, 2)) {
-      const meta = SIGNAL_TITLE[a.metric];
-      if (!meta) continue;
-      out.push({
-        id: `${z.id}:${a.metric}`,
-        level: a.severity === "high" ? "warning" : "notice",
-        title: meta.title,
-        zoneId: z.id,
-        place,
-        kind: meta.kind,
-      });
+    // The strongest distinct signals across the hotspot (e.g. heavy rain + water on streets).
+    const signals = new Map<string, { severity: string; zoneId: string }>();
+    for (const z of h.cells) {
+      for (const a of z.anomalies) {
+        const prev = signals.get(a.metric);
+        if (!prev || (a.severity === "high" && prev.severity !== "high")) signals.set(a.metric, { severity: a.severity, zoneId: z.id });
+      }
+    }
+    let added = 0;
+    for (const [metric, { severity, zoneId }] of signals) {
+      const meta = SIGNAL_TITLE[metric];
+      if (!meta || added >= 2) continue;
+      added++;
+      out.push({ id: `${lead.id}:${metric}`, level: severity === "high" ? "warning" : "notice", title: meta.title, zoneId, place, kind: meta.kind });
     }
   }
   for (const f of state.feeds) {
@@ -66,10 +72,6 @@ export function deriveAlerts(state: CityState): MapAlert[] {
     out.push({ id: `feed:${f.id}`, level: "info", title: `${f.label} ${feedWord(f.status)}`, zoneId: null, place: "Data feed", kind: "feed" });
   }
   return out.sort((a, b) => RANK[a.level] - RANK[b.level]);
-}
-
-function statusRank(z: ZoneState) {
-  return z.status === "RED" ? 0 : z.status === "YELLOW" ? 1 : 2;
 }
 
 export function feedWord(status: string): string {

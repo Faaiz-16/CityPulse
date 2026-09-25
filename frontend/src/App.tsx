@@ -17,9 +17,9 @@ import { clockTime } from "./utils/format";
 
 const POLL_MS = 3000;
 
-// Deep links: ?zone=Z3 opens a zone; ?replay=1&frame=30 opens the replay at a recorded minute.
+// Deep links: ?zone=C2-9 opens a block; ?replay=1&frame=30 opens the replay at a recorded minute.
 const params = new URLSearchParams(window.location.search);
-const INITIAL_ZONE = /^Z[1-9]$/.test(params.get("zone") ?? "") ? params.get("zone") : null;
+const INITIAL_ZONE = /^[A-E][1-5]-[1-9]$/.test(params.get("zone") ?? "") ? params.get("zone") : null;
 const INITIAL_REPLAY = params.get("replay") === "1";
 const INITIAL_FRAME = Number(params.get("frame") ?? 0) || 0;
 const INITIAL_DRAWER = params.get("demo") === "1" ? "demo" : params.get("insights") === "1" ? "insights" : null;
@@ -31,12 +31,17 @@ type LeftDrawer = "demo" | "insights" | null;
 export default function App() {
   const dashboard = usePolling(api.dashboard, POLL_MS);
   const boundaries = usePolling(api.zones, 60000);
+  const mapInfo = usePolling(api.map, 3_600_000); // grid + main roads: static
   const timeline = usePolling(api.timeline, 15000);
-  const [layers, setLayers] = useState<MapLayers>({ rain: true, traffic: true, reports: true, air: true, sensors: false });
+  const [layers, setLayers] = useState<MapLayers>({ forecast: true, rain: true, traffic: true, reports: true, air: true, sensors: false });
   const replay = useReplay(INITIAL_REPLAY ? INITIAL_FRAME : null);
   const sensors = usePolling(layers.sensors && !replay.active ? api.sensors : null, 5000);
   const [selectedZone, setSelectedZone] = useState<string | null>(INITIAL_ZONE);
   const [drawer, setDrawer] = useState<LeftDrawer>(INITIAL_DRAWER);
+  // Demo: "play step by step" is remembered while the drawer opens and closes; a step-by-step
+  // situation is framed on the map (focusZone) while the drawer stays open to show its progress.
+  const [stepByStep, setStepByStep] = useState(false);
+  const [focusZone, setFocusZone] = useState<string | null>(null);
   const wallNow = useNow();
 
   const refreshAll = useCallback(() => {
@@ -52,6 +57,18 @@ export default function App() {
   }, [refreshAll]);
   const closeZone = useCallback(() => setSelectedZone(null), []);
   const closeDrawer = useCallback(() => setDrawer(null), []);
+  // A demo situation is ready. Instant: close the drawer and open the block straight away.
+  // Step by step: keep the drawer open (its steps tick live) and frame the block on the map.
+  const showSituation = useCallback((zoneId: string | null, watch = false) => {
+    if (watch) {
+      setSelectedZone(null);
+      setFocusZone(zoneId);
+      return;
+    }
+    setFocusZone(null);
+    setDrawer(null);
+    setSelectedZone(zoneId);
+  }, []);
   const { start: startReplayRaw } = replay;
   const startReplay = useCallback(() => {
     setDrawer(null);
@@ -67,6 +84,10 @@ export default function App() {
     [inReplay, replayIndex],
   );
   const alerts = useMemo(() => (state ? deriveAlerts(state) : []), [state]);
+  const districtNames = useMemo(
+    () => Object.fromEntries((boundaries.data ?? []).map((b) => [b.district, b.district_name])) as Record<string, string>,
+    [boundaries.data],
+  );
 
   if (!state || (replay.active && !replay.state)) {
     return (
@@ -98,8 +119,8 @@ export default function App() {
     <div className="relative h-full w-full overflow-hidden">
       {/* The map is the hero: full-bleed, everything else floats over it. */}
       <div className="absolute inset-0">
-        <CityMap boundaries={boundaries.data ?? []} zones={state.zones} sensors={sensors.data ?? []} layers={layers}
-          selectedZone={selectedZone} panelOpen={!!zone} onSelectZone={setSelectedZone} />
+        <CityMap boundaries={boundaries.data ?? []} mapInfo={mapInfo.data} zones={state.zones} sensors={sensors.data ?? []} layers={layers}
+          selectedZone={selectedZone} focusZone={focusZone} panelOpen={!!zone} leftPanelOpen={!!drawer} onSelectZone={setSelectedZone} />
       </div>
       <div className="map-vignette absolute inset-0 z-[400]" aria-hidden />
 
@@ -117,7 +138,8 @@ export default function App() {
         )}
         {demoActive && drawer !== "demo" && (
           <div className="absolute left-1/2 top-[76px] hidden -translate-x-1/2 md:block">
-            <DemoPill sim={sim} act={act} onOpen={() => setDrawer("demo")} />
+            <DemoPill sim={sim} act={act} onOpen={() => setDrawer("demo")}
+              place={state.zones.find((z) => z.id === sim.scenario?.focus_zone)?.short_name} />
           </div>
         )}
         {offline && (
@@ -135,7 +157,9 @@ export default function App() {
         {drawer && (
           <div className="absolute bottom-3 left-3 top-[76px] flex max-w-[calc(100%-24px)]">
             {drawer === "demo" && !inReplay && (
-              <DemoDrawer sim={sim} zones={state.zones} feeds={state.feeds} onClose={closeDrawer} onChanged={refreshAll} onStartReplay={startReplay} />
+              <DemoDrawer sim={sim} zones={state.zones} feeds={state.feeds} onClose={closeDrawer} onChanged={refreshAll}
+                onStartReplay={startReplay} onShow={showSituation} districtNames={districtNames}
+                stepByStep={stepByStep} onStepByStepChange={setStepByStep} />
             )}
             {drawer === "insights" && (
               <InsightsDrawer state={state} timeline={timeline.data ?? []} now={now}
@@ -147,7 +171,8 @@ export default function App() {
         {/* right: the zone story, only when asked for */}
         {zone && (
           <div className="absolute bottom-3 right-3 top-[76px] z-10 flex max-w-[calc(100%-24px)]">
-            <ZonePanel zone={zone} feeds={state.feeds} now={now} loadDetail={loadDetail} onClose={closeZone} />
+            <ZonePanel key={zone.id} zone={zone} feeds={state.feeds} now={now} loadDetail={loadDetail} onClose={closeZone}
+              district={districtNames[zone.id.slice(0, 2)]} />
           </div>
         )}
 

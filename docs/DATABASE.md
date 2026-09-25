@@ -32,10 +32,10 @@ Defined in `backend/app/database.py`.
 ### `zones`
 | Column | Type | Notes |
 |---|---|---|
-| `id` | varchar PK | `Z1`–`Z5` |
+| `id` | varchar PK | block ID `C2-9` (district + keypad block; 225 blocks) |
 | `number` | int | |
-| `name`, `short_name` | varchar | "Zone 3 — East", "East" |
-| `boundary` | JSON | GeoJSON polygon |
+| `name`, `short_name` | varchar | "Walled City (C2-9)", "Walled City" |
+| `boundary` | JSON | GeoJSON square (~1.5 km) |
 
 ### `civic_readings` — the common data model for measurements
 | Column | Type | Notes |
@@ -75,7 +75,7 @@ Index: `ix_incidents_zone_ts (zone_id, ts)`.
 | Column | Notes |
 |---|---|
 | `id` | int PK |
-| `key` | de-duplication key, e.g. `Z3:disruption` (indexed) |
+| `key` | de-duplication key, e.g. `C2-9:disruption` (indexed) |
 | `zone_id`, `level`, `kind`, `title` | |
 | `observed` | JSON list — measured facts |
 | `possible_relationship` | text — hedged link, may be null |
@@ -102,10 +102,10 @@ history is kept compactly in `zone_snapshots`, and historical replay can recompu
 
 On start-up `Persistence.ensure_history()`:
 
-1. creates tables (`Base.metadata.create_all`) and inserts the five zones if missing,
-2. checks the history: if it's missing, older than a day, or lacks the replay archive, it
-   regenerates it (≈ 1 s):
-   - every **5 minutes for 3 days**: all metrics for all zones (baseline learning),
+1. creates tables (`Base.metadata.create_all`) and (re)writes the 225 blocks if the layout changed,
+2. checks the history: if it's missing, older than a day, lacks the replay archive, or was made
+   for a different area layout, it regenerates it (≈ 25 s, once; later starts reuse it):
+   - every **10 minutes for 3 days**: all metrics for all 225 blocks (~875k rows, baseline learning),
    - every **1 minute** around the recorded storm (replay only, excluded from baselines),
    - anonymous reports drawn from the same city model,
 3. clears live rows from any previous run (each run starts a fresh live session).
@@ -132,13 +132,13 @@ sqlite3 backend/data/citypulse.db
 -- What did the agent flag?
 SELECT opened_at, level, title, resolved_at FROM alerts ORDER BY opened_at DESC LIMIT 10;
 
--- Zone 3 rainfall over the last few minutes
+-- Walled City (C2-9) rainfall over the last few minutes
 SELECT ts, value FROM civic_readings
-WHERE zone_id = 'Z3' AND metric = 'rain_mm_h' AND is_history = 0 ORDER BY ts DESC LIMIT 20;
+WHERE zone_id = 'C2-9' AND metric = 'rain_mm_h' AND is_history = 0 ORDER BY ts DESC LIMIT 20;
 
 -- Reports by category in the recorded storm
 SELECT category, COUNT(*) FROM incidents
-WHERE is_history = 1 AND zone_id = 'Z3' GROUP BY category ORDER BY 2 DESC;
+WHERE is_history = 1 AND zone_id = 'C3-8' GROUP BY category ORDER BY 2 DESC;
 ```
 
 To start completely fresh: stop the backend, delete `backend/data/citypulse.db`, start again.

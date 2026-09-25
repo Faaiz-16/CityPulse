@@ -8,12 +8,15 @@ minute at a time and records what CityPulse would have shown at each moment. Jud
 back and forth and watch detection happen on past data.
 
 Frames are computed once and cached, so scrubbing is instant and every viewer sees the same
-thing (deterministic).
+thing (deterministic). With 225 blocks a frame is large, so frames are kept compressed and
+decoded when requested.
 """
 
 import logging
 import threading
+import zlib
 from dataclasses import dataclass, field
+from functools import lru_cache
 from datetime import datetime, timedelta
 
 from app.agent.monitor import MonitoringAgent
@@ -31,7 +34,6 @@ from app.schemas import (
     FeedStatus,
     SourceType,
     Summary,
-    SummarySection,
 )
 from app.services import views
 from app.services.feed_manager import FEEDS
@@ -62,9 +64,18 @@ class ReplayUnavailable(Exception):
 
 @dataclass
 class Frame:
-    state: CityState
-    explanations: dict[str, SummarySection]
+    blob: bytes  # zlib-compressed CityState JSON
+    summary: dict  # {i, t, city_status, statuses} for the replay timeline
     agent_trace: list[str]
+
+    @property
+    def state(self) -> CityState:
+        return _decode(self.blob)
+
+
+@lru_cache(maxsize=12)
+def _decode(blob: bytes) -> CityState:
+    return CityState.model_validate_json(zlib.decompress(blob))
 
 
 @dataclass
@@ -106,11 +117,7 @@ class ReplayService:
             "start": r.start,
             "end": r.end,
             "step_seconds": int(ARCHIVE_STEP.total_seconds()),
-            "frames": [
-                {"i": i, "t": f.state.generated_at, "city_status": f.state.pulse.city_status,
-                 "statuses": {z.id: z.status for z in f.state.zones}}
-                for i, f in enumerate(r.frames)
-            ],
+            "frames": [f.summary for f in r.frames],
             "key_moments": r.key_moments,
         }
 
@@ -123,9 +130,10 @@ class ReplayService:
     def zone_detail(self, index: int, zone_id: str) -> dict:
         r = self.session()
         f = self.frame(index)
-        zone = next(z for z in f.state.zones if z.id == zone_id)
+        state = f.state
+        zone = next(z for z in state.zones if z.id == zone_id)
         return views.zone_detail(
-            r.store, self.baselines, zone, f.state.generated_at, explanation=f.explanations.get(zone_id),
+            r.store, self.baselines, zone, state.generated_at, explanation=templates.zone_explanation(zone),
             explanation_by="template", alerts=[a for a in f.state.alerts if a.active],
             agent_trace=f.agent_trace, sensors=[], bin_s=60,
         )
@@ -169,7 +177,7 @@ class ReplayService:
         for z, m, _, v in readings:
             if m == "rain_mm_h":
                 peak[z] = max(peak.get(z, 0.0), v)
-        return max(peak, key=peak.get) if peak else "Z3"
+        return max(peak, key=peak.get) if peak else "C3-8"
 
     def _compute_frames(self, session: ReplaySession, incidents: list[tuple]) -> None:
         engine = AnalysisEngine(self.s, self.baselines)
@@ -211,7 +219,9 @@ class ReplayService:
                 ticker=ticker.latest(), simulation={"active_events": [], "scenario": None, "available_events": []},
                 config={"rolling_window_minutes": self.s.rolling_window_minutes, "mode": "replay"},
             )
-            session.frames.append(Frame(state, {z.id: templates.zone_explanation(z) for z in zones},
+            summary = {"i": len(session.frames), "t": t, "city_status": pulse.city_status,
+                       "statuses": {z.id: z.status for z in zones}}
+            session.frames.append(Frame(zlib.compress(state.model_dump_json().encode(), 6), summary,
                                         list(agent.trace)))
             t += ARCHIVE_STEP
 

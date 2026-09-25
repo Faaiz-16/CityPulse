@@ -46,7 +46,7 @@ def _canon(v: float) -> str:
 def allowed_numbers(facts: dict) -> set[str]:
     allowed: set[str] = set()
     _collect_numbers(facts, allowed)
-    allowed.update(_canon(n) for n in range(0, 6))  # zone numbers and small counts ("two zones")
+    allowed.update(_canon(n) for n in range(0, 10))  # grid-reference digits and small counts ("two areas")
     return allowed
 
 

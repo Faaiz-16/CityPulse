@@ -162,6 +162,19 @@ class RiskInsight(BaseModel):
     resident_advice: str
 
 
+class Prediction(BaseModel):
+    """A possible impact that often follows what is happening now — a forecast, never a certainty."""
+
+    kind: Literal["flooding", "power_cut", "traffic", "bus_delays", "air_quality"]
+    label: str  # "Flash flooding possible"
+    likelihood: Literal["low", "medium", "high"]
+    score: float  # 0–1, how strongly current conditions point to it
+    horizon: str  # "next 30–60 min"
+    reason: str  # the observed conditions it is based on
+    source_zone: str  # block where the driving conditions were observed
+    nearby: bool  # True when the conditions are in a neighbouring block
+
+
 class IncidentView(BaseModel):
     id: str
     zone_id: str
@@ -192,6 +205,7 @@ class ZoneState(BaseModel):
     incident_counts: dict[str, int]
     recent_incidents: list[IncidentView]
     anchor: tuple[float, float]  # map point for the zone label and rain overlay
+    predictions: list[Prediction] = []  # possible next impacts (analysis/forecast.py)
 
 
 class FeedHealth(BaseModel):

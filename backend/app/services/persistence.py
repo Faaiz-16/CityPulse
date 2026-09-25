@@ -17,6 +17,11 @@ from app.geo.zones import ZONES
 from app.schemas import Alert, CivicIncident, CivicReading, ZoneState
 from app.simulation.history import ARCHIVE_PROVIDER, generate_history
 
+# History rows already loaded in this process, keyed by (database, newest history time).
+# History is deterministic and only rewritten when regenerated, so a restart of the pipeline in
+# the same process (tests, reset) doesn't need to read ~600k rows again.
+_HISTORY_CACHE: dict[tuple[str, datetime], tuple[list, list]] = {}
+
 log = logging.getLogger("citypulse.db")
 
 
@@ -42,7 +47,9 @@ class Persistence:
         try:
             db.init_db()
             with db.SessionLocal() as session:
-                if session.scalar(select(func.count()).select_from(db.ZoneRow)) == 0:
+                stored = set(session.scalars(select(db.ZoneRow.id)).all())
+                if stored != {z.id for z in ZONES}:  # first run, or the area layout changed
+                    session.execute(delete(db.ZoneRow))
                     session.add_all(db.ZoneRow(
                         id=z.id, number=z.number, name=z.name, short_name=z.short_name,
                         boundary={"type": "Polygon", "coordinates": [z.geojson_ring()]}) for z in ZONES)
@@ -64,7 +71,10 @@ class Persistence:
                 latest = session.scalar(select(func.max(db.ReadingRow.ts)).where(db.ReadingRow.is_history))
                 has_archive = session.scalar(select(func.count()).select_from(db.ReadingRow).where(
                     db.ReadingRow.is_history, db.ReadingRow.provider == ARCHIVE_PROVIDER))
-                if latest is None or _utc(latest) < now - timedelta(days=1) or not has_archive:
+                # History from an older area layout (different area IDs) must be regenerated.
+                has_layout = session.scalar(select(db.ReadingRow.id).where(
+                    db.ReadingRow.is_history, db.ReadingRow.zone_id == ZONES[-1].id).limit(1))
+                if latest is None or _utc(latest) < now - timedelta(days=1) or not has_archive or not has_layout:
                     log.info("generating %s days of synthetic history…", days)
                     session.execute(delete(db.ReadingRow).where(db.ReadingRow.is_history))
                     session.execute(delete(db.IncidentRow).where(db.IncidentRow.is_history))
@@ -77,13 +87,19 @@ class Persistence:
                              if r["provider"] != ARCHIVE_PROVIDER],
                             [(i["zone_id"], i["category"], i["ts"]) for i in incidents])
 
+                key = (str(session.get_bind().url), _utc(latest))
+                if key in _HISTORY_CACHE:
+                    self._succeed()
+                    return _HISTORY_CACHE[key]
                 rows = session.execute(select(db.ReadingRow.zone_id, db.ReadingRow.metric, db.ReadingRow.ts,
                                               db.ReadingRow.value).where(
                     db.ReadingRow.is_history, db.ReadingRow.provider != ARCHIVE_PROVIDER)).all()
                 inc = session.execute(select(db.IncidentRow.zone_id, db.IncidentRow.category, db.IncidentRow.ts)
                                       .where(db.IncidentRow.is_history)).all()
             self._succeed()
-            return ([(z, m, _utc(t), v) for z, m, t, v in rows], [(z, c, _utc(t)) for z, c, t in inc])
+            _HISTORY_CACHE.clear()
+            _HISTORY_CACHE[key] = ([(z, m, _utc(t), v) for z, m, t, v in rows], [(z, c, _utc(t)) for z, c, t in inc])
+            return _HISTORY_CACHE[key]
         except SQLAlchemyError as exc:
             self._fail("loading history", exc)
             return [], []

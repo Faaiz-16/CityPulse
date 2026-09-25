@@ -25,7 +25,7 @@ Legend: ✅ verified · ⚠️ verified with a caveat · ❌ not done
 | Graceful degradation | ✅ | Real-time drill: every feed outage → FALLBACK → UNAVAILABLE → recovery; dashboard kept serving |
 | Public / synthetic data | ✅ | Synthetic by default; real Open-Meteo weather + AQI verified live (labelled LIVE) |
 | Privacy respected | ✅ | `test_incident_personal_fields_are_dropped`; no personal columns in the schema |
-| Correlation vs causation distinguished | ✅ | Validator tests; scan of the full live state found no causal wording; unrelated Zone 1 spike not linked |
+| Correlation vs causation distinguished | ✅ | Validator tests; scan of the full live state found no causal wording; unrelated Vaishali Nagar jam not linked to the Walled City rain |
 | 10-second comprehension | ⚠️ | Designed for it (status word + icon + colour, one headline); not yet tested with real non-technical users |
 
 ## Innovation

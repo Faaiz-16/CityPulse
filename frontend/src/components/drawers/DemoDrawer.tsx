@@ -1,6 +1,6 @@
 import {
-  CarFront, CheckCircle2, Circle, CloudLightning, CloudRain, FlaskConical, History, Layers, Pause, Play, RotateCcw,
-  SlidersHorizontal, Waves, Wind, Zap, Database, Clapperboard, type LucideIcon,
+  CarFront, CheckCircle2, ChevronDown, Circle, CloudLightning, CloudRain, FlaskConical, History, Layers, Loader2, Pause, Play,
+  RotateCcw, SlidersHorizontal, Waves, Wind, Zap, Database, Clapperboard, type LucideIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "../../services/api";
@@ -12,7 +12,6 @@ export const PRESET_ICONS: Record<string, LucideIcon> = {
   rain: CloudRain, water: Waves, traffic: CarFront, accident: CarFront, outage: Zap, air: Wind, storm: CloudLightning, multi: Layers,
 };
 const SEVERITY_COLOR = { high: "#f87171", moderate: "#fbbf24", low: "#94a3b8" };
-const ZONE_NAMES: Record<string, string> = { Z1: "Zone 1 — Central", Z2: "Zone 2 — North", Z3: "Zone 3 — East", Z4: "Zone 4 — South", Z5: "Zone 5 — West" };
 
 type Tab = "scenarios" | "custom" | "feeds";
 
@@ -23,34 +22,40 @@ interface Props {
   onClose: () => void;
   onChanged: () => void;
   onStartReplay: () => void;
+  onShow: (zoneId: string | null, watch?: boolean) => void; // a situation is ready: show it on the map
+  stepByStep: boolean; // kept by the app, so the choice survives closing the drawer
+  onStepByStepChange: (on: boolean) => void;
+  districtNames: Record<string, string>; // "C2" → "Walled City"
 }
 
-/** Everything needed to *create* a story: scenarios, playback, custom sliders, feed failures. */
-export function DemoDrawer({ sim, zones, feeds, onClose, onChanged, onStartReplay }: Props) {
+/** Everything needed to *create* a situation: scenarios, custom sliders, feed failures. */
+export function DemoDrawer({ sim, zones, feeds, onClose, onChanged, onStartReplay, onShow, districtNames, stepByStep, onStepByStepChange }: Props) {
   const [tab, setTab] = useState<Tab>("scenarios");
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<{ text: string; error?: boolean } | null>(null);
 
-  async function act(fn: () => Promise<{ message: string }>) {
-    setBusy(true);
+  async function act(fn: () => Promise<{ message: string }>, label = "Working…"): Promise<unknown> {
+    setBusy(label);
     try {
       setMessage({ text: (await fn()).message });
       onChanged();
+      return true;
     } catch (e) {
       setMessage({ text: e instanceof Error ? e.message : "Request failed", error: true });
+      return false;
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
   const tabs: { id: Tab; label: string; icon: LucideIcon }[] = [
-    { id: "scenarios", label: "Scenarios", icon: Clapperboard },
+    { id: "scenarios", label: "Situations", icon: Clapperboard },
     { id: "custom", label: "Custom", icon: SlidersHorizontal },
     { id: "feeds", label: "Feed failures", icon: Database },
   ];
 
   return (
-    <Drawer side="left" title="Demo" subtitle="Create a civic incident — CityPulse must detect it on its own."
+    <Drawer side="left" title="Demo" subtitle="Pick a situation — it appears on the map right away."
       icon={<FlaskConical size={18} className="mt-0.5 text-[var(--pulse)]" aria-hidden />} onClose={onClose}>
       <div className="flex gap-1 border-b px-3 pt-2" style={{ borderColor: "var(--line)" }} role="tablist">
         {tabs.map(({ id, label, icon: Icon }) => (
@@ -63,10 +68,16 @@ export function DemoDrawer({ sim, zones, feeds, onClose, onChanged, onStartRepla
       </div>
 
       <div className="space-y-4 p-4">
-        {tab === "scenarios" && <ScenariosTab sim={sim} zones={zones} busy={busy} act={act} onStartReplay={onStartReplay} />}
-        {tab === "custom" && <CustomTab sim={sim} busy={busy} act={act} />}
-        {tab === "feeds" && <FeedsTab feeds={feeds} busy={busy} act={act} />}
-        {message && (
+        {tab === "scenarios" && <ScenariosTab sim={sim} zones={zones} busy={busy} act={act} onStartReplay={onStartReplay} onShow={onShow}
+          stepByStep={stepByStep} onStepByStepChange={onStepByStepChange} />}
+        {tab === "custom" && <CustomTab sim={sim} zones={zones} districtNames={districtNames} busy={!!busy} act={act} onShow={onShow} />}
+        {tab === "feeds" && <FeedsTab feeds={feeds} busy={!!busy} act={act} />}
+        {busy && (
+          <p className="flex items-center gap-2 text-[12.5px] text-[var(--pulse)]" role="status">
+            <Loader2 size={14} className="animate-spin" aria-hidden /> {busy}
+          </p>
+        )}
+        {message && !busy && (
           <p className="text-[12px]" role="status" style={{ color: message.error ? "var(--bad)" : "var(--muted)" }}>{message.text}</p>
         )}
       </div>
@@ -74,36 +85,55 @@ export function DemoDrawer({ sim, zones, feeds, onClose, onChanged, onStartRepla
   );
 }
 
-type Act = (fn: () => Promise<{ message: string }>) => Promise<void>;
+type Act = (fn: () => Promise<{ message: string }>, label?: string) => Promise<unknown>;
 
 // ------------------------------------------------------------------ scenarios
 
-function ScenariosTab({ sim, zones, busy, act, onStartReplay }: {
-  sim: SimulationStatus; zones: ZoneState[]; busy: boolean; act: Act; onStartReplay: () => void;
+function ScenariosTab({ sim, zones, busy, act, onStartReplay, onShow, stepByStep, onStepByStepChange }: {
+  sim: SimulationStatus; zones: ZoneState[]; busy: string | null; act: Act; onStartReplay: () => void;
+  onShow: (id: string | null, watch?: boolean) => void; stepByStep: boolean; onStepByStepChange: (on: boolean) => void;
 }) {
-  const [selected, setSelected] = useState<string>(sim.scenario?.id ?? "heavy_rain");
+  const run = async (p: ScenarioPreset) => {
+    const label = stepByStep ? `Starting ${p.name}…` : `Setting up ${p.name} in ${p.place}…`;
+    if (await act(() => api.runScenario(p.id, !stepByStep), label)) onShow(p.zone_id, stepByStep);
+  };
   return (
     <>
-      {sim.scenario && <NowPlaying sim={sim} zones={zones} busy={busy} act={act} />}
+      {sim.scenario && (
+        <NowShowing key={`${sim.scenario.id}|${sim.scenario.started_at}`} sim={sim} zones={zones} busy={!!busy} act={act} />
+      )}
 
       <div>
-        <h3 className="label-caps mb-2">Choose a scenario</h3>
-        <div className="space-y-1.5" role="radiogroup" aria-label="Scenarios">
-          <button type="button" role="radio" aria-checked={false} disabled={busy} onClick={() => act(api.reset)}
-            className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left hover:bg-white/5 disabled:opacity-50"
+        <h3 className="label-caps mb-2">Choose a situation</h3>
+        <div className="grid grid-cols-2 gap-2">
+          <button type="button" disabled={!!busy} onClick={async () => { if (await act(api.reset, "Back to normal…")) onShow(null); }}
+            className="flex flex-col items-start gap-1 rounded-xl p-2.5 text-left hover:bg-white/5 disabled:opacity-50"
             style={{ border: "1px solid var(--line)" }}>
-            <CheckCircle2 size={17} color="var(--ok)" aria-hidden />
-            <span className="flex-1">
-              <span className="block text-[13px] font-semibold">Normal city</span>
-              <span className="block text-[11.5px] text-[var(--muted)]">Clear every event and feed fault</span>
-            </span>
-            <RotateCcw size={14} className="text-[var(--faint)]" aria-hidden />
+            <CheckCircle2 size={18} color="var(--ok)" aria-hidden />
+            <span className="text-[13px] font-semibold leading-tight">Normal city</span>
+            <span className="text-[11px] text-[var(--muted)]">Clear everything</span>
           </button>
-          {sim.presets.map((p) => (
-            <PresetCard key={p.id} preset={p} selected={selected === p.id} busy={busy}
-              onSelect={() => setSelected(p.id)} onRun={() => act(() => api.runScenario(p.id))} />
-          ))}
+          {sim.presets.map((p) => {
+            const Icon = PRESET_ICONS[p.icon] ?? CloudRain;
+            const active = sim.scenario?.id === p.id;
+            return (
+              <button key={p.id} type="button" disabled={!!busy} onClick={() => run(p)} title={p.tagline}
+                className="flex flex-col items-start gap-1 rounded-xl p-2.5 text-left hover:bg-white/5 disabled:opacity-50"
+                style={{ border: `1px solid ${active ? "rgba(45,212,191,0.6)" : "var(--line)"}`, background: active ? "rgba(45,212,191,0.07)" : undefined }}>
+                <span className="flex w-full items-center justify-between">
+                  <Icon size={18} color={active ? "var(--pulse)" : "var(--muted)"} aria-hidden />
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: SEVERITY_COLOR[p.severity] }} title={`${p.severity} severity`} />
+                </span>
+                <span className="text-[13px] font-semibold leading-tight">{p.name}</span>
+                <span className="text-[11px] text-[var(--muted)]">{p.place}</span>
+              </button>
+            );
+          })}
         </div>
+        <label className="mt-3 flex cursor-pointer items-center gap-2 text-[12px] text-[var(--muted)]">
+          <input type="checkbox" checked={stepByStep} onChange={(e) => onStepByStepChange(e.target.checked)} className="cp-range" />
+          Play step by step instead (watch it build up over ~2 minutes)
+        </label>
       </div>
 
       <button type="button" onClick={onStartReplay}
@@ -115,46 +145,10 @@ function ScenariosTab({ sim, zones, busy, act, onStartReplay }: {
   );
 }
 
-function PresetCard({ preset, selected, busy, onSelect, onRun }: {
-  preset: ScenarioPreset; selected: boolean; busy: boolean; onSelect: () => void; onRun: () => void;
-}) {
-  const Icon = PRESET_ICONS[preset.icon] ?? CloudRain;
-  return (
-    <div className="rounded-xl" style={{ border: `1px solid ${selected ? "rgba(45,212,191,0.5)" : "var(--line)"}`, background: selected ? "rgba(45,212,191,0.06)" : "transparent" }}>
-      <button type="button" role="radio" aria-checked={selected} onClick={onSelect}
-        className="flex w-full items-center gap-3 px-3 py-2 text-left">
-        <Icon size={17} className="shrink-0" color={selected ? "var(--pulse)" : "var(--muted)"} aria-hidden />
-        <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-2 text-[13px] font-semibold">
-            {preset.name}
-            <span className="h-1.5 w-1.5 rounded-full" style={{ background: SEVERITY_COLOR[preset.severity] }} title={`${preset.severity} severity`} />
-          </span>
-          <span className="block truncate text-[11.5px] text-[var(--muted)]">{preset.tagline}</span>
-        </span>
-        <span className="shrink-0 text-[10.5px] text-[var(--faint)]">Zone {preset.zone_id.slice(1)}</span>
-      </button>
-      {selected && (
-        <div className="cp-fade-in space-y-2 px-3 pb-3 text-[12px]">
-          <dl className="grid grid-cols-[72px_1fr] gap-x-2 gap-y-1 text-[var(--muted)]">
-            <dt>Where</dt><dd className="text-[var(--text)]">{ZONE_NAMES[preset.zone_id]}</dd>
-            <dt>Feeds</dt><dd className="text-[var(--text)]">{preset.feeds.join(" · ")}</dd>
-            <dt>Expect</dt><dd className="text-[var(--text)]">{preset.expected}</dd>
-            <dt>Story</dt><dd className="text-[var(--text)]">{Math.max(...preset.storyline.map((s) => s.expected_at_s))} s at 1× — faster at 2×/4×</dd>
-          </dl>
-          <button type="button" disabled={busy} onClick={onRun}
-            className="flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-semibold text-[#04221d] disabled:opacity-50"
-            style={{ background: "var(--pulse)" }}>
-            <Play size={14} aria-hidden /> Run scenario
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** The running story: playback controls + beats ticked only when the analysis detects them. */
-export function NowPlaying({ sim, zones, busy, act }: { sim: SimulationStatus; zones: ZoneState[]; busy: boolean; act: Act }) {
+/** What's on the map now, and — on request — how CityPulse detected it, step by step. */
+function NowShowing({ sim, zones, busy, act }: { sim: SimulationStatus; zones: ZoneState[]; busy: boolean; act: Act }) {
   const sc = sim.scenario!;
+  const [open, setOpen] = useState(!sc.complete); // playing live: show the steps as they tick
   const focus = zones.find((z) => z.id === sc.focus_zone);
   const stages = [...sc.stages].sort((a, b) => {
     if (a.reached_at && b.reached_at) return a.reached_at.localeCompare(b.reached_at);
@@ -164,36 +158,44 @@ export function NowPlaying({ sim, zones, busy, act }: { sim: SimulationStatus; z
   });
   const done = sc.stages.filter((s) => s.reached_at).length;
   return (
-    <section className="rounded-xl p-3" style={{ background: "rgba(45,212,191,0.07)", border: "1px solid rgba(45,212,191,0.35)" }} aria-label="Running scenario">
+    <section className="rounded-xl p-3" style={{ background: "rgba(45,212,191,0.07)", border: "1px solid rgba(45,212,191,0.35)" }} aria-label="Current situation">
       <div className="flex items-center gap-2">
-        <span className="label-caps" style={{ color: "var(--pulse)" }}>{sim.clock.paused ? "Paused" : "Now playing"}</span>
-        <span className="ml-auto font-mono text-[12px] text-[#cbd5e1]">T+{sc.elapsed_s}s</span>
+        <span className="label-caps" style={{ color: "var(--pulse)" }}>
+          {sim.clock.paused ? "Paused" : sc.complete ? "Now showing" : "Playing step by step"}
+        </span>
+        {!sc.complete && <span className="ml-auto font-mono text-[12px] text-[#cbd5e1]">{sc.elapsed_s} s</span>}
       </div>
-      <div className="mt-0.5 text-[14px] font-semibold">{sc.name}</div>
-      <div className="text-[11.5px] text-[var(--muted)]">{ZONE_NAMES[sc.focus_zone]} · {done}/{sc.stages.length} detected</div>
-
-      <PlaybackControls sim={sim} busy={busy} act={act} />
-
-      <ol className="mt-3 space-y-1 text-[12.5px]">
-        {stages.map((s) => (
-          <li key={s.key} className="flex items-center gap-2">
-            {s.reached_at ? <CheckCircle2 size={14} color="var(--ok)" aria-label="detected" /> : <Circle size={14} className="text-[var(--faint)]" aria-label="waiting" />}
-            <span className={s.reached_at ? "" : "text-[var(--faint)]"}>{s.label}</span>
-            <span className="ml-auto font-mono text-[10.5px] text-[var(--faint)]">
-              {s.reached_at ? `T+${s.t_plus_s ?? "?"}s` : `~T+${s.expected_at_s}s`}
-            </span>
-          </li>
-        ))}
-      </ol>
-      <p className="mt-1.5 text-[10.5px] text-[var(--faint)]">
-        Beats tick only when the analysis detects them. “~T+” = typical time at 1×; at 2×/4× detection lands later in scenario time because analysis windows run on the real clock.
-      </p>
+      <div className="mt-0.5 text-[15px] font-semibold">{sc.name}</div>
+      {!sc.complete && done === 0 && (
+        <p className="mt-1 text-[12px] text-[var(--muted)]">Starting from a calm city — the first signs appear after about 25 seconds.</p>
+      )}
       {focus && (
-        <p className="mt-3 rounded-lg px-2.5 py-1.5 text-[12px]" style={{ background: "rgba(0,0,0,0.25)" }}>
-          <span className="text-[var(--muted)]">CityPulse now says: </span>
-          <span className="font-semibold" style={{ color: STATUS_META[focus.status].color }}>{focus.status_label}</span>
+        <p className="mt-1 text-[12.5px]">
+          <span className="font-semibold" style={{ color: STATUS_META[focus.status].color }}>{focus.short_name}: {focus.status_label}</span>
           <span className="text-[var(--muted)]"> — {focus.headline}</span>
         </p>
+      )}
+
+      {!sc.complete && <PlaybackControls sim={sim} busy={busy} act={act} />}
+
+      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open}
+        className="mt-2.5 flex w-full items-center justify-between text-[12px] font-semibold text-[var(--muted)] hover:text-[var(--text)]">
+        How CityPulse detected it ({done}/{sc.stages.length})
+        <ChevronDown size={14} className={`transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
+      </button>
+      {open && (
+        <ol className="cp-fade-in mt-1.5 space-y-1 text-[12.5px]">
+          {stages.map((s) => (
+            <li key={s.key} className="flex items-center gap-2">
+              {s.reached_at ? <CheckCircle2 size={14} color="var(--ok)" aria-label="detected" /> : <Circle size={14} className="text-[var(--faint)]" aria-label="waiting" />}
+              <span className={s.reached_at ? "" : "text-[var(--faint)]"}>{s.label}</span>
+              <span className="ml-auto font-mono text-[10.5px] text-[var(--faint)]">
+                {s.reached_at ? `after ${s.t_plus_s ?? "?"} s` : "waiting"}
+              </span>
+            </li>
+          ))}
+          <li className="pt-1 text-[10.5px] text-[var(--faint)]">Each step is ticked only when the analysis actually detected it.</li>
+        </ol>
       )}
     </section>
   );
@@ -249,8 +251,10 @@ function levelWord(v: number) {
   return "Extreme";
 }
 
-function CustomTab({ sim, busy, act }: { sim: SimulationStatus; busy: boolean; act: Act }) {
-  const [zone, setZone] = useState(sim.custom?.zone_id ?? "Z3");
+function CustomTab({ sim, zones, districtNames, busy, act, onShow }: {
+  sim: SimulationStatus; zones: ZoneState[]; districtNames: Record<string, string>; busy: boolean; act: Act; onShow: (id: string | null) => void;
+}) {
+  const [zone, setZone] = useState(sim.custom?.zone_id ?? "C2-9");
   const [duration, setDuration] = useState(sim.custom?.duration_s ?? 600);
   const [values, setValues] = useState<Record<string, number>>(
     () => Object.fromEntries(sim.custom_controls.map((c) => [c, sim.custom?.values[c] ?? 0])),
@@ -259,16 +263,23 @@ function CustomTab({ sim, busy, act }: { sim: SimulationStatus; busy: boolean; a
     if (sim.custom) setValues((v) => ({ ...v, ...sim.custom!.values }));
   }, [sim.custom]);
   const any = Object.values(values).some((v) => v > 0);
+  // Blocks grouped by district (A1 … E5), keypad order inside each.
+  const districts = [...new Set(zones.map((z) => z.id.slice(0, 2)))].sort((a, b) => a[1].localeCompare(b[1]) || a[0].localeCompare(b[0]));
   return (
     <>
       <p className="text-[12px] text-[var(--muted)]">
-        Set conditions in one zone. The simulated feeds change; CityPulse has to notice and connect them itself.
+        Set conditions around one block. The simulated feeds change and build up over a minute or two; CityPulse has to
+        notice and connect them itself.
       </p>
       <label className="flex items-center justify-between gap-2 text-[12.5px]">
-        <span className="font-semibold">Zone</span>
-        <select value={zone} onChange={(e) => setZone(e.target.value)} className="rounded-lg px-2 py-1.5 text-[12.5px]"
+        <span className="font-semibold">Block</span>
+        <select value={zone} onChange={(e) => setZone(e.target.value)} className="max-w-[230px] rounded-lg px-2 py-1.5 text-[12.5px]"
           style={{ background: "var(--panel-2)", border: "1px solid var(--line)" }}>
-          {Object.entries(ZONE_NAMES).map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+          {districts.map((d) => (
+            <optgroup key={d} label={`District ${d}${districtNames[d] ? ` · ${districtNames[d]}` : ""}`}>
+              {zones.filter((z) => z.id.startsWith(`${d}-`)).map((z) => <option key={z.id} value={z.id}>{z.id} · {z.short_name}</option>)}
+            </optgroup>
+          ))}
         </select>
       </label>
       <div className="space-y-3">
@@ -298,7 +309,8 @@ function CustomTab({ sim, busy, act }: { sim: SimulationStatus; busy: boolean; a
         </select>
       </label>
       <div className="flex gap-2">
-        <button type="button" disabled={busy || !any} onClick={() => act(() => api.custom(zone, values, duration))}
+        <button type="button" disabled={busy || !any}
+          onClick={async () => { if (await act(() => api.custom(zone, values, duration), "Applying…")) onShow(zone); }}
           className="flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-semibold text-[#04221d] disabled:opacity-40"
           style={{ background: "var(--pulse)" }}>
           <Play size={14} aria-hidden /> Apply

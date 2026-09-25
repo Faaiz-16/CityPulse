@@ -3,19 +3,22 @@
 * Road sensors ("TSN v2" JSON): camelCase fields, epoch-millisecond timestamps, raw speed
   (congestion must be derived from speed vs free-flow speed).
 * Bus operator delays (CSV text): route-level rows, delay in seconds, day-first local
-  timestamps, and the operator's own area codes (CEN/NTH/...) instead of our zone IDs.
+  timestamps, and the operator's own depot codes (e.g. "R4C6") instead of our area IDs ("F4").
 """
 
 from datetime import datetime
 
 from app.data_sources.city_model import FREE_FLOW_KMH, CityModel
+from app.data_sources.city_model import ZONE_CHARACTER
 from app.geo.zones import ZONES
 
-# The bus operator's area codes -> CityPulse zone IDs (an identifier mismatch to reconcile).
-TRANSIT_AREA_CODES = {"CEN": "Z1", "NTH": "Z2", "EST": "Z3", "STH": "Z4", "WST": "Z5"}
+# The bus operator's depot codes (row/column, 1-based) -> CityPulse area IDs: an identifier
+# mismatch the normalizer has to reconcile.
+TRANSIT_AREA_CODES = {f"R{z.row + 1}C{z.col + 1}": z.id for z in ZONES}
 _ZONE_TO_AREA = {v: k for k, v in TRANSIT_AREA_CODES.items()}
-_ROUTES = {"Z1": ("R-101", "R-104"), "Z2": ("R-210",), "Z3": ("R-312", "R-315"),
-           "Z4": ("R-420",), "Z5": ("R-507",)}
+# Busier areas are served by two routes, quieter ones by one.
+_ROUTES = {z.id: tuple(f"R-{z.number:02d}{s}" for s in ("A", "B")[: 2 if ZONE_CHARACTER[z.id]["traffic"] > 1.0 else 1])
+           for z in ZONES}
 
 
 def synthetic_road_payload(model: CityModel, now: datetime, malformed: bool = False) -> dict:

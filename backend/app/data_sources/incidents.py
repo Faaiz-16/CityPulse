@@ -56,11 +56,11 @@ def synthetic_payload(
         stamp = now.astimezone(UTC).isoformat()
         out.extend([
             {"service_request_id": "SR-BAD-1", "service_name": "Water Logging",
-             "requested_datetime": "yesterday-ish", "lat": 28.61, "long": 77.29},
+             "requested_datetime": "yesterday-ish", "lat": 26.92, "long": 75.82},
             {"service_request_id": "SR-BAD-2", "service_name": "Pothole Repair",
-             "requested_datetime": stamp, "lat": None, "long": 77.2},
+             "requested_datetime": stamp, "lat": None, "long": 75.8},
             {"service_request_id": "SR-BAD-3", "service_name": "Alien Landing",
-             "requested_datetime": stamp, "lat": 28.61, "long": 77.2},
+             "requested_datetime": stamp, "lat": 26.92, "long": 75.8},
             {"service_request_id": f"SR-BAD-4-{rng.randint(0, 999)}", "service_name": "Pothole Repair",
              "requested_datetime": stamp, "lat": 19.07, "long": 72.87},  # outside the city
         ])

@@ -17,8 +17,9 @@ the API serves its latest result (`CityState`), so a slow feed or AI call can't 
 |---|---|---|
 | GET | [`/api/health`](#get-apihealth) | Is everything working? |
 | GET | [`/api/dashboard`](#get-apidashboard) | The complete civic state (what the UI polls) |
-| GET | [`/api/zones`](#get-apizones) | Zone boundaries + current status |
-| GET | [`/api/zones/{zone_id}`](#get-apizoneszone_id) | Investigation detail for one zone |
+| GET | [`/api/zones`](#get-apizones) | The 225 blocks (districts A1–E5 × blocks 1–9) + current status |
+| GET | [`/api/map`](#get-apimap) | Grid edges + Jaipur main roads (OpenStreetMap) per block |
+| GET | [`/api/zones/{zone_id}`](#get-apizoneszone_id) | Detail for one block (e.g. `C2-9`) |
 | GET | [`/api/readings`](#get-apireadings) | Recent normalized readings |
 | GET | [`/api/incidents`](#get-apiincidents) | Recent anonymous civic reports |
 | GET | [`/api/anomalies`](#get-apianomalies) | Active anomalies |
@@ -29,10 +30,10 @@ the API serves its latest result (`CityState`), so a slow feed or AI call can't 
 | GET | [`/api/alerts`](#get-apialerts) | Monitoring-agent alerts |
 | GET | [`/api/agent`](#get-apiagent) | Agent reasoning trace |
 | GET | [`/api/sensors`](#get-apisensors) | IoT sensor layer |
-| GET | [`/api/timeline`](#get-apitimeline) | Zone-status history (heat-map) |
+| GET | [`/api/timeline`](#get-apitimeline) | Area-status history (heat-map) |
 | GET | [`/api/simulation/status`](#get-apisimulationstatus) | Demo state |
 | GET | [`/api/simulation/scenarios`](#get-apisimulationscenarios) | Scenario presets and custom controls |
-| POST | [`/api/simulation/scenario`](#post-apisimulationscenario) | Run a scenario preset |
+| POST | [`/api/simulation/scenario`](#post-apisimulationscenario) | Run a scenario preset (instant by default) |
 | POST | [`/api/simulation/playback`](#post-apisimulationplayback) | Pause / resume / speed |
 | POST | [`/api/simulation/custom`](#post-apisimulationcustom) | Custom scenario from sliders |
 | POST | [`/api/simulation/event`](#post-apisimulationevent) | Trigger a single civic event |
@@ -81,7 +82,12 @@ The single structured civic state — the source of truth for the map, dashboard
 
 **`ZoneState`** fields: `id, number, name, short_name, status (GREEN|YELLOW|RED), status_label,
 headline, issue_types[], metrics{}, anomalies[], relationships[], risks[],
-insufficient_evidence[], cannot_assess[], incident_counts{}, recent_incidents[], anchor`.
+insufficient_evidence[], cannot_assess[], incident_counts{}, recent_incidents[], anchor, predictions[]`.
+
+`predictions[]` — possible next impacts for the block (a forecast, not a certainty):
+`{kind: flooding|power_cut|traffic|bus_delays|air_quality, label, likelihood: low|medium|high, score,
+horizon ("next 30–60 min"), reason ("Based on rain at 26 mm/h in a neighbouring block (Walled City)."),
+source_zone, nearby}`. Empty for a block with nothing to watch.
 
 **`metrics[key]`** (one per signal) — everything needed to explain "how unusual":
 
@@ -102,7 +108,7 @@ never assumed to be zero.
 
 ```json
 {
-  "id": "Z3:rain_traffic", "rule_id": "rain_traffic", "title": "Rain and traffic congestion",
+  "id": "C2-9:rain_traffic", "rule_id": "rain_traffic", "title": "Rain and traffic congestion",
   "signals": ["rain_mm_h", "congestion_pct", "transit_delay_min"],
   "strength": "strong", "score": 0.99, "co_movement_r": 0.94,
   "lead_lag": "Rainfall became unusual first (15:07:12); traffic congestion followed about 1 min later.",
@@ -115,21 +121,34 @@ never assumed to be zero.
 
 ### GET `/api/zones`
 
-Zone list with GeoJSON boundaries (for drawing the map) and current status.
+The 225 blocks (5 × 5 districts A1–E5, each 3 × 3 blocks numbered 1–9) with GeoJSON squares and
+current status.
 
 ```json
-[{ "id": "Z1", "number": 1, "name": "Zone 1 — Central", "short_name": "Central",
+[{ "id": "C2-9", "number": 84, "name": "Walled City (C2-9)", "short_name": "Walled City", "row": 5, "col": 8,
+   "district": "C2", "district_name": "Walled City",
    "status": "GREEN", "status_label": "Normal", "headline": "Conditions normal",
-   "centroid": [28.6151, 77.2103], "anchor": [28.618, 77.21],
-   "boundary": { "type": "Polygon", "coordinates": [[[77.175, 28.645], "…"]] } }]
+   "centroid": [26.92225, 75.8306], "anchor": [26.92225, 75.8306],
+   "boundary": { "type": "Polygon", "coordinates": [[[75.818, 26.9335], "…"]] } }]
 ```
 
-`anchor` is where the map label sits; `centroid` is the geometric centre (used for live API
-queries).
+`row`/`col` are the 0-based block position in the 15 × 15 block grid (row 0 = north, col 0 = west). `centroid` is also used for live API queries.
+
+### GET `/api/map`
+
+Static map furniture: the grid edges and Jaipur's main roads split per cell, used to draw
+congestion on real roads.
+
+```json
+{ "city": "Jaipur",
+  "grid": { "north": 26.996, "south": 26.7935, "west": 75.692, "east": 75.9188, "rows": 15, "cols": 15, "districts": 5, "blocks": 3, "col_letters": "ABCDE" },
+  "roads": [{ "cell": "C2-9", "kind": "major", "name": "Mirza Ismail Road", "path": [[26.915, 75.80], "…"] }],
+  "roads_attribution": "Road shapes © OpenStreetMap contributors (ODbL)" }
+```
 
 ### GET `/api/zones/{zone_id}`
 
-Everything the investigation panel needs for one zone.
+Everything the area panel needs for one area (e.g. `/api/zones/C2-9`).
 
 | Field | Meaning |
 |---|---|
@@ -143,7 +162,7 @@ Everything the investigation panel needs for one zone.
 | `alerts[]` | Active alerts for this zone |
 | `agent_trace[]` | The agent's last reasoning steps |
 
-Errors: `404` `{"detail": "Unknown zone 'Z9'. Valid zones: Z1, Z2, Z3, Z4, Z5."}`
+Errors: `404` `{"detail": "Unknown block 'Z9'. Blocks look like C2-5 (district A1–E5, block 1–9)."}`
 
 ---
 
@@ -153,20 +172,28 @@ Errors: `404` `{"detail": "Unknown zone 'Z9'. Valid zones: Z1, Z2, Z3, Z4, Z5."}
 
 | Query | Required | Default | Notes |
 |---|---|---|---|
-| `zone_id` | yes | — | `Z1`–`Z5` |
+| `zone_id` | yes | — | a block, e.g. `C2-9` |
 | `metric` | yes | — | e.g. `rain_mm_h`, `congestion_pct`, `aqi`, `water_level_cm` |
 | `minutes` | no | 15 | 1–40 |
 
 ```json
-[{ "ts": "2026-09-24T11:05:16+00:00", "value": 0.0, "data_status": "simulated", "sensor_id": "RG-E-01" }]
+[{ "source": "traffic", "source_type": "traffic", "provider": "synthetic city model", "zone_id": "C2-9",
+   "timestamp": "2026-09-24T19:00:27.565000Z", "ingested_at": "2026-09-24T19:00:27.566000Z",
+   "metric": "congestion_pct", "value": 44.87, "unit": "%", "confidence": 1.0, "data_status": "simulated",
+   "sensor_id": "TS-C2-9-1", "lat": 26.9246, "lon": 75.8231, "metadata": {} }]
 ```
+
+Each row is a full record in the common data model (`CivicReading`): UTC `timestamp` (when it was
+observed) and `ingested_at` (when CityPulse received it), standard `unit`, block `zone_id`, feed
+`source` / `provider`, `confidence` and `data_status`. `metadata` carries notes from normalization,
+e.g. `{"route_id": "R-84A"}` for bus delays or `{"derived_from": "pm25 (US EPA breakpoints)"}` for AQI.
 
 ### GET `/api/incidents`
 
 Query: `zone_id` (optional), `minutes` (1–40, default 10). Returns normalized, anonymous reports:
 
 ```json
-[{ "id": "SR-5BC70D3E6D", "source": "incidents", "zone_id": "Z4",
+[{ "id": "SR-5BC70D3E6D", "source": "incidents", "zone_id": "C4-6",
    "timestamp": "2026-09-24T10:56:22Z", "ingested_at": "2026-09-24T10:56:24Z",
    "category": "streetlight", "severity": "low", "lat": 28.5432, "lon": 77.1976,
    "confidence": 1.0, "data_status": "simulated",
@@ -188,7 +215,7 @@ shapes as inside `/api/dashboard`).
 
 ```json
 { "city": { "headline": "…", "sections": { "…": "…" }, "generated_by": "template", "generated_at": "…", "note": null },
-  "zones": { "Z1": { "whats_happening": "…", "why_it_matters": "…", "possible_connection": "…" } } }
+  "zones": { "C2-9": { "whats_happening": "…", "why_it_matters": "…", "possible_connection": "…" } } }
 ```
 
 ### GET `/api/sources/status`
@@ -224,7 +251,7 @@ One entry per feed:
 ```json
 { "runs": 133,
   "last_trace": ["Checked 5 feeds: all healthy", "Data quality: 0 malformed record(s) rejected so far",
-                 "Checked anomalies: 0 active across 5 zones",
+                 "Checked anomalies: 0 active across 225 zones",
                  "Decision: 0 active alert(s); 0 opened, 0 resolved this run"],
   "active_alerts": [] }
 ```
@@ -232,7 +259,7 @@ One entry per feed:
 ### GET `/api/sensors`
 
 ```json
-[{ "id": "TS-C-01", "zone_id": "Z1", "kind": "traffic", "lat": 28.621, "lon": 77.2,
+[{ "id": "TS-C2-9-1", "zone_id": "C2-9", "kind": "traffic", "lat": 26.9246, "lon": 75.8231,
    "values": { "congestion_pct": { "value": 55.4, "unit": "%", "ts": "…", "data_status": "simulated" } } }]
 ```
 
@@ -240,8 +267,8 @@ One entry per feed:
 
 ### GET `/api/timeline`
 
-Zone statuses every 15 seconds over the last 30 minutes:
-`[{ "at": "…", "zones": { "Z1": "GREEN", "Z2": "GREEN", "Z3": "RED", "…": "…" } }]`
+Area statuses every 15 seconds over the last 30 minutes:
+`[{ "at": "…", "zones": { "C2-9": "RED", "C3-3": "RED", "C2-7": "YELLOW", "…": "…" } }]`
 
 ---
 
@@ -270,12 +297,16 @@ and the custom slider list.
 ### POST `/api/simulation/scenario`
 
 ```json
-{ "name": "heavy_rain" }
+{ "name": "heavy_rain", "instant": true }
 ```
 
 `name`: `heavy_rain`, `flash_flood`, `traffic`, `accident`, `power_outage`, `poor_air`, `storm`,
 `multi_event` (alias `full`). Resets the city, then plays the preset's timed effects. Storyline
 beats are ticked only when the analysis output shows them. Unknown name → `400` listing valid ids.
+
+`instant` (default `true`): the situation is shown straight away — the scenario starts ~2 minutes
+in the past and the pipeline is fast-forwarded through that time with the same feeds and analysis
+as live (the request takes ~2 s). `false` starts it now, to watch it unfold with pause and 2×/4×.
 
 ### POST `/api/simulation/playback`
 
@@ -289,7 +320,7 @@ accelerated; analysis keeps running on the real clock.
 ### POST `/api/simulation/custom`
 
 ```json
-{ "zone_id": "Z3", "values": { "rain": 1.0, "traffic": 0.6 }, "duration_s": 900 }
+{ "zone_id": "C2-9", "values": { "rain": 1.0, "traffic": 0.6 }, "duration_s": 900 }
 ```
 
 `values` keys: `rain`, `flooding`, `traffic`, `accident`, `outage`, `air`, each 0–1.5 (0 removes it).
@@ -298,17 +329,17 @@ Replaces any previous custom scenario.
 ### POST `/api/simulation/event`
 
 ```json
-{ "event": "heavy_rain", "zone_id": "Z3", "intensity": 1.0, "duration_s": 600 }
+{ "event": "heavy_rain", "zone_id": "C2-9", "intensity": 1.0, "duration_s": 600 }
 ```
 
 | Field | Rules |
 |---|---|
 | `event` | `heavy_rain`, `flooding`, `traffic_spike`, `road_accident`, `incident_cluster`, `poor_air` |
-| `zone_id` | `Z1`–`Z5` |
+| `zone_id` | a block, e.g. `C2-9` (the event is centred there and reaches neighbouring blocks more weakly) |
 | `intensity` | 0.2–1.5 (optional, default 1.0) |
 | `duration_s` | 60–3600 (optional, default 600) |
 
-Response: `{"ok": true, "message": "Heavy rain in Zone 3 — East started. …"}`
+Response: `{"ok": true, "message": "Heavy rain in Walled City (C2-9) started. …"}`
 Invalid input → `422`:
 `{"error": "invalid_request", "detail": ["event: Input should be 'heavy_rain', 'flooding', …"]}`
 
@@ -338,9 +369,9 @@ The browser owns the playhead and asks for frame *i*. Frames are computed once a
 ```json
 { "available": true, "name": "Recorded storm — 23 Sep, 18:18 (local time)",
   "description": "Recorded data from the archive, replayed through the same analysis engine and monitoring agent that run live. Nothing here is live.",
-  "focus_zone": "Z3", "start": "2026-09-23T12:28:00+00:00", "end": "2026-09-23T14:10:00+00:00",
+  "focus_zone": "C3-8", "start": "2026-09-23T12:28:00+00:00", "end": "2026-09-23T14:10:00+00:00",
   "step_seconds": 60,
-  "frames": [{ "i": 0, "t": "…", "city_status": "GREEN", "statuses": { "Z1": "GREEN", "…": "…" } }],
+  "frames": [{ "i": 0, "t": "…", "city_status": "GREEN", "statuses": { "A1": "GREEN", "…": "…" } }],
   "key_moments": [{ "i": 20, "t": "…", "label": "Rain begins" }, { "i": 25, "t": "…", "label": "Traffic increases" }] }
 ```
 
