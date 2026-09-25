@@ -1,8 +1,8 @@
-# CityPulse — Database
+# CityPulse: Database
 
 ## Why SQLite (and how to switch)
 
-CityPulse uses **SQLite**: a single file (`backend/data/citypulse.db`), no server, no setup — the
+CityPulse uses **SQLite**: a single file (`backend/data/citypulse.db`), no server, no setup. That is the
 right trade-off for a 24-hour hackathon. All access goes through **SQLAlchemy** (a Python library
 that turns Python classes into SQL), so moving to PostgreSQL is a configuration change:
 
@@ -17,8 +17,8 @@ SQLite runs in **WAL mode** ("write-ahead log"), which lets the API read while t
 
 The live analysis reads from an **in-memory rolling store** (last 40 minutes). The database keeps:
 
-- **history** — 3 days of synthetic data used to learn baselines, plus the recorded storm for replay,
-- **live readings and reports** — for inspection and audit,
+- **history**: 3 days of synthetic data used to learn baselines, plus the recorded storm for replay,
+- **live readings and reports**: for inspection and audit,
 - **alerts**, **zone status snapshots** and the **simulation log**.
 
 Every database call is best-effort (`services/persistence.py`). If the database fails, the live
@@ -37,7 +37,7 @@ Defined in `backend/app/database.py`.
 | `name`, `short_name` | varchar | "Walled City (C2-9)", "Walled City" |
 | `boundary` | JSON | GeoJSON square (~1.5 km) |
 
-### `civic_readings` — the common data model for measurements
+### `civic_readings`: the common data model for measurements
 | Column | Type | Notes |
 |---|---|---|
 | `id` | int PK | |
@@ -47,19 +47,19 @@ Defined in `backend/app/database.py`.
 | `ts` | datetime (UTC) | when it was observed |
 | `ingested_at` | datetime (UTC) | when CityPulse received it |
 | `metric`, `value`, `unit` | | canonical units (mm/h, °C, km/h, %, min, µg/m³, AQI, cm) |
-| `confidence` | float | 0–1 |
+| `confidence` | float | 0-1 |
 | `data_status` | varchar | `live`, `simulated`, `fallback` |
 | `sensor_id` | varchar, nullable | e.g. `RG-E-01` |
 | `is_history` | bool | `true` = seeded history / archive |
 | `metadata` | JSON | e.g. bus `route_id` |
 
-Index: `ix_readings_zone_metric_ts (zone_id, metric, ts)` — every baseline and replay query filters
+Index: `ix_readings_zone_metric_ts (zone_id, metric, ts)`: every baseline and replay query filters
 by zone, metric and time range.
 
-### `incidents` — anonymous civic reports
+### `incidents`: anonymous civic reports
 | Column | Type | Notes |
 |---|---|---|
-| `id` | varchar PK | upstream request id (`SR-…`) — used to ignore duplicates |
+| `id` | varchar PK | upstream request id (`SR-…`), used to ignore duplicates |
 | `source`, `zone_id` | varchar | |
 | `ts`, `ingested_at` | datetime (UTC) | |
 | `category` | varchar | `waterlogging`, `pothole`, `power_outage`, … |
@@ -71,15 +71,15 @@ by zone, metric and time range.
 There is deliberately **no column for names, phone numbers, account IDs or free text**.
 Index: `ix_incidents_zone_ts (zone_id, ts)`.
 
-### `alerts` — monitoring-agent alerts
+### `alerts`: monitoring-agent alerts
 | Column | Notes |
 |---|---|
 | `id` | int PK |
 | `key` | de-duplication key, e.g. `C2-9:disruption` (indexed) |
 | `zone_id`, `level`, `kind`, `title` | |
-| `observed` | JSON list — measured facts |
-| `possible_relationship` | text — hedged link, may be null |
-| `causation_note` | text — always "Not a confirmed cause…" |
+| `observed` | JSON list, measured facts |
+| `possible_relationship` | text, hedged link, may be null |
+| `causation_note` | text, always "Not a confirmed cause…" |
 | `opened_at`, `updated_at`, `resolved_at` | |
 
 Keeping *observed*, *possible relationship* and *causation note* in separate columns makes the
@@ -90,7 +90,7 @@ Zone status every 15 seconds (`ts`, `zone_id`, `status`, `anomalies` JSON, `rela
 Index on `ts`. Powers the heat-map timeline and gives an audit trail of what the system flagged.
 
 ### `simulation_events`
-Log of demo actions (`at`, `event_type`, `zone_id`, `params`) — so a demo can be reconstructed.
+Log of demo actions (`at`, `event_type`, `zone_id`, `params`): so a demo can be reconstructed.
 
 ## Why there are no `anomalies` / `correlations` tables
 

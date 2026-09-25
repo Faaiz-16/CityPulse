@@ -1,13 +1,13 @@
 # CityPulse
 
-**Understand what's happening in your city — at a glance.**
+**Understand what's happening in your city, at a glance.**
 
-CityPulse fuses disconnected civic feeds — weather, traffic and buses, 311-style reports, air
-quality and street sensors — into one live, map-first "pulse" that a resident can read in about
+CityPulse fuses disconnected civic feeds (weather, traffic and buses, 311-style reports, air
+quality and street sensors) into one live, map-first "pulse" that a resident can read in about
 ten seconds. It flags what is unusual, surfaces *possible* relationships between signals, and
 explains them in plain language, without ever claiming one thing caused another.
 
-> Built for **AmiHacks — Track B: "CityPulse: The Live Civic Health Dashboard"**.
+> Built for **AmiHacks Track B: "CityPulse: The Live Civic Health Dashboard"**.
 
 ## Hackathon deliverables
 
@@ -31,7 +31,7 @@ timing, units and identifiers. Residents find out about a flooded underpass afte
 stuck in it; city staff spot patterns only after someone escalates a complaint. Dashboards that
 exist are built for analysts, not for the public.
 
-The hard part isn't putting data on a map — it's **fusing** mismatched feeds into something
+The hard part isn't putting data on a map, it's **fusing** mismatched feeds into something
 trustworthy, finding genuine links rather than coincidences, and **explaining them honestly**.
 
 ## Who it's for
@@ -48,7 +48,7 @@ trustworthy, finding genuine links rather than coincidences, and **explaining th
 | **Normalize** | One common data model: UTC timestamps, standard units, area IDs, per-record validation, personal data stripped |
 | **Analyse** | Time-of-day baselines → anomaly detection → rolling-window correlation → possible-impact insight → area status |
 | **Show** | A map of Jaipur in 5 × 5 districts, each split into 3 × 3 blocks (~1.5 km); unusual blocks show **Needs attention / Possible disruption** as colour + icon + word |
-| **Explain** | "What's happening · Why it may matter · Possible connection" — rule-based, optionally AI-assisted and fact-checked |
+| **Explain** | "What's happening · Why it may matter · Possible connection", rule-based, optionally AI-assisted and fact-checked |
 | **Watch** | A monitoring agent raises and resolves alerts, keeping *observed facts*, *possible links* and *"not a confirmed cause"* separate |
 | **Survive failures** | Any feed can fail, lag or send garbage; the rest keeps working and the UI says exactly what is missing |
 
@@ -70,12 +70,12 @@ Full details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Key features
 
-- **Jaipur in districts and blocks.** 5 × 5 districts (A–E, 1–5, named after localities — the
+- **Jaipur in districts and blocks.** 5 × 5 districts (A-E, 1-5, named after localities: the
   Walled City is C2), each split into 3 × 3 blocks of ~1.5 km (`C2-9` = block 9 of C2): 225 blocks,
   each with its own sensors, baselines and status. Events are local: a storm lights up a
   **hotspot** of neighbouring blocks, a crash just one.
 - **Smooth map.** Canvas rendering, no blur behind panels, and layers that only redraw when they
-  change — 60 fps while zooming.
+  change: 60 fps while zooming.
 - **Map-first, 10-second read.** The default screen is the map, a slim header and a handful of
   alerts. Normal blocks draw nothing (no grid); unusual blocks get a soft amber or red tint and
   each hotspot gets one short label. Everything else is one click away.
@@ -92,10 +92,10 @@ Full details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 - **Honest correlation.** Only logically related signals, same area, same rolling window,
   timing that fits. Strength scored and shown. Weak evidence is labelled *insufficient*.
 - **Early warnings.** "Traffic may slow in Walled City (C2-9)" fires when rain is heavy and traffic is
-  climbing — *before* it crosses its threshold.
+  climbing: *before* it crosses its threshold.
 - **What may happen next.** From what is happening now, CityPulse shows the likely knock-on
-  impacts here and in neighbouring blocks — e.g. heavy rain → possible flash flooding and power
-  cuts nearby — each with a low / medium / high chance, a rough time frame and what it is based
+  impacts here and in neighbouring blocks, e.g. heavy rain → possible flash flooding and power
+  cuts nearby. Each comes with a low / medium / high chance, a rough time frame and what it is based
   on. It appears in each block's panel and hover card; the map itself shows only amber and red.
 - **Demo drawer.** Eight realistic scenario presets (heavy rain, flash flood, congestion,
   accident, power outage, poor air, severe storm, multi-event) that unfold over time with
@@ -113,8 +113,8 @@ Full details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 | Ingest 3+ distinct data types | 5 feeds: weather, traffic/transit, civic reports, air quality, IoT water level |
 | Normalize + timestamp into a common model | `backend/app/normalization/` → `CivicReading` / `CivicIncident` |
 | Detect anomalies or correlations | `backend/app/analysis/` (anomaly, correlation, risk) |
-| Live, glanceable dashboard or map | `frontend/` — map-first UI, 3-second refresh |
-| Plain-language summary | `backend/app/ai/` — templates + optional validated LLM |
+| Live, glanceable dashboard or map | `frontend/`, map-first UI, 3-second refresh |
+| Plain-language summary | `backend/app/ai/`, templates + optional validated LLM |
 | *Optional:* threshold alerting | Monitoring agent (`backend/app/agent/`) |
 | *Optional:* historical replay | Recorded storm replayed minute by minute through the same engine and agent (`backend/app/simulation/replay.py`) |
 | Degrade gracefully | Feed manager fallbacks + "cannot assess" reporting |
@@ -128,26 +128,26 @@ Full traceability: [docs/REQUIREMENTS_MATRIX.md](docs/REQUIREMENTS_MATRIX.md).
 | Opportunity (from the brief) | Implementation |
 |---|---|
 | AI/ML anomaly & time-series correlation | Robust median/MAD baselines, robust z-scores, Poisson significance test for report spikes, Pearson co-movement with lead/lag check |
-| NLP summaries | Claude API with structured output; numbers and causal wording checked before display |
+| NLP summaries | Optional LLM API with structured output; numbers and causal wording checked before display |
 | Agentic AI | Monitoring agent with a visible reasoning trace and alert hysteresis |
 | Creative pulse visualisation | Heartbeat strip, heat-map timeline, narrative ticker |
 | Geospatial / IoT | Simulated traffic sensors, rain gauges, air monitors and water-level sensors on the map, feeding the same pipeline |
 
 ## Screenshots
 
-**Normal city — the 10-second read**
+**Normal city: the 10-second read**
 ![All areas normal](docs/screenshots/normal.jpg)
 
-**Heavy rainfall over the Walled City — a 13-block hotspot (9 red, 4 amber), rain cells, congestion on real roads, grouped alerts**
+**Heavy rainfall over the Walled City, a 13-block hotspot (9 red, 4 amber), rain cells, congestion on real roads, grouped alerts**
 ![Walled City in possible disruption](docs/screenshots/disruption.jpg)
 
-**Area panel — the 10-second answer, with "Explain in detail" for the evidence**
-![Walled City — the simple area view](docs/screenshots/zone.jpg)
+**Area panel: the 10-second answer, with "Explain in detail" for the evidence**
+![Walled City: the simple area view](docs/screenshots/zone.jpg)
 
-**Demo drawer — a scenario unfolding, beats ticked only when the analysis detects them**
+**Demo drawer: a scenario unfolding, beats ticked only when the analysis detects them**
 ![Demo drawer](docs/screenshots/demo.jpg)
 
-**Historical replay — yesterday's recorded storm, same engine, labelled not live**
+**Historical replay: yesterday's recorded storm, same engine, labelled not live**
 ![Replay of the recorded storm](docs/screenshots/replay.jpg)
 
 Deep links for demos: `/?zone=C2-9` opens a block; `/?replay=1&frame=40` opens the replay at a
@@ -202,17 +202,17 @@ Copy `.env.example` to `backend/.env`. Everything is optional:
 
 Click **Demo** in the header:
 
-1. **Situations** — one click (e.g. *Heavy rainfall · Walled City*) and it is on the map within
+1. **Situations**: one click (e.g. *Heavy rainfall · Walled City*) and it is on the map within
    ~2 seconds: the backend fast-forwards the last two minutes of the real pipeline, then the map
    flies there and opens the area panel. No waiting, no refreshing. *How CityPulse detected it*
    lists each step (rain begins → traffic builds → water rises → reports → possible relationship →
    possible disruption) with the time the analysis actually detected it. Tick **Play step by
    step** to watch it build up live instead, with pause and 1×/2×/4×.
-2. **Custom** — sliders for rain, flooding, traffic, accident, power outage and air pollution
+2. **Custom**: sliders for rain, flooding, traffic, accident, power outage and air pollution
    around any area.
-3. **Feed failures** — set any feed to Outage, Delayed or Malformed and watch CityPulse degrade
+3. **Feed failures**: set any feed to Outage, Delayed or Malformed and watch CityPulse degrade
    gracefully.
-4. **Replay** (header) — last evening's recorded storm through the same pipeline.
+4. **Replay** (header): last evening's recorded storm through the same pipeline.
 
 Full script with timings: [docs/DEMO.md](docs/DEMO.md).
 
@@ -315,4 +315,4 @@ File-by-file explanation: [docs/FILE_GUIDE.md](docs/FILE_GUIDE.md).
 
 ## License
 
-No license chosen yet — add one (for example MIT) before publishing the repository.
+No license chosen yet: add one (for example MIT) before publishing the repository.

@@ -1,4 +1,4 @@
-# CityPulse — Judge Q&A
+# CityPulse: Judge Q&A
 
 36 likely questions. Each has a **short answer** (say this first), a **detailed answer** (if they
 want more) and, where useful, the **technical** backing (file, algorithm, number).
@@ -22,15 +22,15 @@ zone panel gives staff and journalists the evidence behind every flag.
 
 ### 3. How do you meet the "understandable in 10 seconds" requirement?
 **Short:** A map-first screen: normal blocks draw nothing at all, only unusual blocks get
-colour + icon + one word, and at most 4 grouped alerts — details are one click away.
+colour + icon + one word, and at most 4 grouped alerts; details are one click away.
 **Detailed:** Status is always colour + icon + word (never colour alone). Of Jaipur's 225 blocks
 (5 × 5 districts of 3 × 3 blocks), only unusual ones are tinted amber or red, with one short label
 per hotspot, and alerts are grouped per hotspot. Clicking a block opens the area panel: status,
 what you'd notice and what to do; raw numbers and evidence sit behind *Explain in detail*.
 
 ### 4. How is this different from existing city dashboards?
-**Short:** They show data; we show *fused meaning* — what's unusual, what may be related, and
-what we can't tell — for the public.
+**Short:** They show data; we show *fused meaning* (what's unusual, what may be related, and
+what we can't tell) for the public.
 **Detailed:** Typical dashboards put every feed on a chart for analysts. CityPulse normalizes
 feeds into one model, compares against time-of-day baselines, links signals only under strict
 rules, labels uncertainty explicitly, keeps working when feeds fail, and explains in plain
@@ -50,12 +50,12 @@ key) by setting `CITYPULSE_LIVE_APIS=true`.
 events on demand.
 **Detailed:** Real city feeds need access agreements and rarely contain a storm during a
 24-hour hackathon. The synthetic city reproduces real messiness (formats, units, timestamps,
-noise, personal fields) and is clearly labelled SIMULATED — never presented as live or official.
-**Technical:** `data_sources/city_model.py` — daily patterns × zone character + event effects +
+noise, personal fields) and is clearly labelled SIMULATED, never presented as live or official.
+**Technical:** `data_sources/city_model.py`: daily patterns × zone character + event effects +
 seeded noise, so the same inputs always give the same outputs.
 
 ### 7. Is the synthetic data realistic?
-**Short:** Realistic in shape — rush hours, evening air-quality peaks, random reports — but not
+**Short:** Realistic in shape (rush hours, evening air-quality peaks, random reports) but not
 calibrated on a real city, and we say so.
 **Detailed:** Rain uses meteorological thresholds (7.6 mm/h = heavy), AQI uses the US EPA
 breakpoints, reports arrive as a Poisson process. Events ripple into related signals with lags.
@@ -90,7 +90,7 @@ feed's update rate; relationships are evaluated over a shared 10-minute rolling 
 **Short:** Bad records are rejected one by one with a reason; the good records in the same batch
 still flow.
 **Detailed:** Missing values, impossible values (negative speed), bad timestamps, unknown
-categories, locations outside the city — all rejected and counted. The feed chip shows the
+categories, locations outside the city, all rejected and counted. The feed chip shows the
 rejected count. You can inject malformed data live from the demo panel.
 
 ## Analysis
@@ -104,10 +104,10 @@ normal.
 **Technical:** `analysis/baseline.py`, 48 half-hour slots, pooled ±30 min.
 
 ### 13. How do you detect anomalies?
-**Short:** Current value vs baseline vs a documented threshold — for example traffic ≥ 30 % above
+**Short:** Current value vs baseline vs a documented threshold: for example traffic ≥ 30 % above
 normal.
 **Detailed:** Relative rules for traffic (+30 %) and bus delays (+50 %); absolute rules where
-"normal" is ~0 — rain ≥ 7.6 mm/h, street water ≥ 15 cm; AQI ≥ 150 or +25 %. Severity scales with
+"normal" is ~0: rain ≥ 7.6 mm/h, street water ≥ 15 cm; AQI ≥ 150 or +25 %. Severity scales with
 how far past the threshold it is. Example: 147 vs 100 → +47 % → anomaly, moderate.
 **Technical:** `analysis/anomaly.py`; thresholds in `config.py`.
 
@@ -119,14 +119,14 @@ rate. Because we check 225 blocks × 4 report types every 3 seconds, we use a st
 avoid false alarms from multiple comparisons. We tuned this after seeing false alarms in testing.
 
 ### 15. What is the rolling window?
-**Short:** The last 10 minutes — signals must overlap inside it to be considered related.
+**Short:** The last 10 minutes: signals must overlap inside it to be considered related.
 **Detailed:** Instead of treating all data as one snapshot, we continuously look at recent
 observations. The window is configurable (`CITYPULSE_ROLLING_WINDOW_MINUTES`); 10 minutes suits
 our feed rates.
 
 ### 16. How do you avoid fake correlations?
 **Short:** A relationship needs a logical rule, both signals anomalous, the same zone, the same
-window and timing that fits — co-occurrence alone is never enough.
+window and timing that fits; co-occurrence alone is never enough.
 **Detailed:** Only six plausible rules exist (rain→traffic, rain→flooding, outages→traffic,
 accident→traffic, traffic→bus delays, traffic→air quality). Evidence is scored for severity, timing, co-movement and supporting
 signals; weak evidence is labelled "insufficient". In the demo, an unrelated traffic jam in
@@ -141,7 +141,7 @@ and a causation note in separate fields; the AI validator rejects causal phrases
 "due to", "led to"…). Missing data produces "cannot check", not a guess.
 
 ### 18. What's the "co-movement r"?
-**Short:** A Pearson correlation of the two signals over the window — did they rise and fall
+**Short:** A Pearson correlation of the two signals over the window: did they rise and fall
 together?
 **Detailed:** It adds up to 0.1 to the evidence score. When both signals plateau at unusual
 levels, r is near zero and we say it adds no extra evidence rather than pretending.
@@ -158,17 +158,17 @@ serious anomalies. Both are grounded in observed data, and labelled as risk, not
 **Short:** Transparent statistics are more trustworthy and explainable for a public tool, and
 work without training data.
 **Detailed:** We use robust statistics (median/MAD, z-scores), a Poisson significance test and
-correlation — every flag can be explained with numbers and a rule. ML would need labelled
+correlation: every flag can be explained with numbers and a rule. ML would need labelled
 history we don't have and would be harder to audit. The engine is modular, so an ML detector
 could be added alongside, not instead.
 
 ## AI, NLP and the agent
 
 ### 21. What does the AI do?
-**Short:** It only rewrites structured findings into friendlier language — it never decides
+**Short:** It only rewrites structured findings into friendlier language: it never decides
 what's happening.
 **Detailed:** The analysis engine produces the facts. A rule-based template always writes the
-summary first. If an API key is configured, Claude rewrites the facts in plain language; the
+summary first. If an API key is configured, an LLM rewrites the facts in plain language; the
 text is shown only if it passes checks.
 
 ### 22. How do you prevent AI hallucinations?
@@ -179,7 +179,7 @@ stays; the UI labels which one is shown (Rule-based / AI-assisted).
 **Technical:** `ai/llm.py` (structured output via `messages.parse`), `ai/validator.py`.
 
 ### 23. What if the AI service is down?
-**Short:** Nothing visible breaks — the rule-based summary is always generated first.
+**Short:** Nothing visible breaks: the rule-based summary is always generated first.
 **Detailed:** Calls run in a background thread with a timeout, at most one per 20 s, only when
 the situation changes. Tested with a mocked failing client.
 
@@ -248,14 +248,14 @@ replay, the React map UI, 121 tests and the documentation.
 
 ### 34. What's the historical replay?
 **Short:** Yesterday's recorded storm replayed minute by minute through the exact same engine
-and agent — proof the detection works on past data, not just a scripted demo.
+and agent: proof the detection works on past data, not just a scripted demo.
 **Detailed:** The replay finds the event in the stored history itself and is clearly labelled
 ARCHIVE / not live. Detection unfolds: rain 18:18 → traffic 18:23 → possible link 18:25 →
 disruption 18:26.
 **Technical:** `simulation/replay.py`.
 
 ### 34b. Aren't the demo scenarios just scripted results?
-**Short:** No — a scenario only changes the simulated *city*; everything you see is detected by the
+**Short:** No: a scenario only changes the simulated *city*; everything you see is detected by the
 normal pipeline, and the storyline ticks a beat only when the analysis output shows it.
 **Detailed:** "Heavy rainfall" raises rainfall around the Walled City; the feeds report it in their own
 formats, normalization, baselines, anomaly rules, correlation, risk and the agent do the rest.

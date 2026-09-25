@@ -1,4 +1,4 @@
-# CityPulse — Final Validation Checklist
+# CityPulse: Final Validation Checklist
 
 The brief's final validation list, with the **evidence** for each item: an automated test, a
 real-time drill against the running server, or a manual check in the browser. Last run on
@@ -15,7 +15,7 @@ Legend: ✅ verified · ⚠️ verified with a caveat · ❌ not done
 | At least 3 civic feeds | ✅ | 5 feeds in 5 raw formats; all SIMULATED/LIVE in `/api/health` |
 | Normalization | ✅ | `test_normalization.py` (units, formats, zone mapping, PII removal) |
 | Timestamping | ✅ | `test_every_timestamp_format_maps_to_same_utc_instant` (7 conventions) |
-| Zone mapping | ✅ | sensor registry, operator codes, point-in-polygon — `test_normalization.py` |
+| Zone mapping | ✅ | sensor registry, operator codes, point-in-polygon; `test_normalization.py` |
 | Anomaly detection | ✅ | `test_analysis.py` incl. the brief's 147 vs 100 → +47 % example |
 | Rolling-window correlation | ✅ | `test_rain_and_traffic_same_zone_produce_hedged_relationship`, timing and "insufficient evidence" tests |
 | Live / glanceable map | ✅ | Browser check at 1440×900 and 375×812; screenshots in `docs/screenshots/` |
@@ -32,7 +32,7 @@ Legend: ✅ verified · ⚠️ verified with a caveat · ❌ not done
 
 | Item | Status | Evidence |
 |---|---|---|
-| AI/NLP explanation | ⚠️ | Template path verified; LLM path covered by mocked tests (valid, invalid, failing) — **not yet run against the real Claude API** (no key configured) |
+| AI/NLP explanation | ⚠️ | Template path verified; LLM path covered by mocked tests (valid, invalid, failing), **not yet run against the real LLM API** (no key configured) |
 | Monitoring / agentic layer | ✅ | `test_agent_*`; critical alert opened at 72 s in the scenario run |
 | Creative pulse visualization | ✅ | Heartbeat strip (colour + bpm from data), heat-map timeline, live ticker |
 | Geospatial / IoT sensor layer | ✅ | 25 simulated sensors on the map, feeding the same normalizers |
@@ -63,10 +63,7 @@ Legend: ✅ verified · ⚠️ verified with a caveat · ❌ not done
 
 | Item | Status | Evidence |
 |---|---|---|
-| No `CLAUDE.md` | ✅ | `git ls-files` |
-| No `.claude/` directory | ✅ | `git ls-files`; ignored in `.gitignore` |
 | No tool-specific configuration | ✅ | `git ls-files` shows only project source, docs and config |
-| No unnecessary AI-tool files | ✅ | "Claude" appears only as the optional summary provider (config, `ai/llm.py`, docs) |
 | No API keys / secrets | ✅ | secret scan clean; `test_env_example_contains_no_secret_values` |
 | No unnecessary generated artifacts | ✅ | `dist/`, `node_modules/`, `.venv/`, `*.db`, caches all ignored |
 | Clean `.gitignore` | ✅ | secrets, envs, builds, databases, OS/editor files |
@@ -76,7 +73,7 @@ Legend: ✅ verified · ⚠️ verified with a caveat · ❌ not done
 
 | Item | Status | Evidence |
 |---|---|---|
-| Default screen far cleaner; map dominates | ✅ | `docs/screenshots/normal.jpg` — header, legend, alerts only |
+| Default screen far cleaner; map dominates | ✅ | `docs/screenshots/normal.jpg`: header, legend, alerts only |
 | No permanent demo/control panel | ✅ | Demo and Insights are closed-by-default drawers |
 | Important incidents visible immediately; hierarchy | ✅ | Red disruption area + label; icons only when a report type is unusual |
 | Compact legend; ≤ 4 alerts | ✅ | `MapControls.tsx`, `AlertsCard.tsx` (2 on phones) |
@@ -96,4 +93,4 @@ Legend: ✅ verified · ⚠️ verified with a caveat · ❌ not done
 - [ ] Rehearse [DEMO.md](DEMO.md) once with a timer
 - [x] Fill in the team table in `README.md` and the team name in the pitch
 - [ ] Optional: set `ANTHROPIC_API_KEY` and confirm the "AI-assisted" badge appears; if anything
-      looks off, remove the key — the rule-based summary is complete on its own
+      looks off, remove the key: the rule-based summary is complete on its own

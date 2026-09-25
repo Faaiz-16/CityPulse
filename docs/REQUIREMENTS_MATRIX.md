@@ -1,6 +1,6 @@
-# CityPulse — Requirement Compliance Matrix
+# CityPulse: Requirement Compliance Matrix
 
-Source of truth: *AmiHacks Problem Statement-2 — "CityPulse: The Live Civic Health Dashboard"* (Track B).
+Source of truth: *AmiHacks Problem Statement-2, "CityPulse: The Live Civic Health Dashboard"* (Track B).
 
 This matrix traces every official requirement to the feature that satisfies it, where it is
 implemented, how it is tested and when it appears in the demo. A row is marked **✅ Done** only
@@ -11,11 +11,11 @@ when the feature has been built and verified (automated tests + manual run in th
 
 | # | PDF requirement | CityPulse feature | Module / code | Test | Demo step | Status |
 |---|---|---|---|---|---|---|
-| 1 | Ingest 3+ distinct data types | Weather, traffic/transit, 311-style incidents, air quality, plus simulated IoT water-level sensors — each with its **own raw format** | M2 `backend/app/data_sources/` | `test_normalization.py` | Feed-health chips in the top bar | ✅ Done |
+| 1 | Ingest 3+ distinct data types | Weather, traffic/transit, 311-style incidents, air quality, plus simulated IoT water-level sensors, each with its **own raw format** | M2 `backend/app/data_sources/` | `test_normalization.py` | Feed-health chips in the top bar | ✅ Done |
 | 2 | Normalize + timestamp mismatched feeds into a common model | Per-feed normalizers → `CivicReading` / `CivicIncident` (UTC timestamps, SI units, zone IDs) | M3 `backend/app/normalization/` | `test_normalization.py` | Zone panel shows unit-consistent values + "as of" times | ✅ Done |
 | 3 | Detect basic anomalies or correlations | Robust baselines (median/MAD by time of day) → deviation, threshold, severity; rule-based rolling-window correlation with co-movement statistic | M4 `backend/app/analysis/` | `test_analysis.py` | Trigger heavy rain → anomalies, then a "possible link" | ✅ Done |
-| 4 | Live, glanceable dashboard or map | Map-first UI: faint normal zones, amber attention, highlighted red disruption areas with word labels; rain cells, congestion corridors, incident clusters; pulse heart; ≤ 4 alerts; details in drawers; 3-second polling | M8–M11 `frontend/` | Manual + build check | Opening screen | ✅ Done |
-| 5 | Plain-language summary — what's happening and why it matters | Template summary (always available) + optional grounded LLM rewrite with numeric grounding validator | M6 `backend/app/ai/` | `test_ai_agent_simulation.py` | "Right now" panel | ✅ Done |
+| 4 | Live, glanceable dashboard or map | Map-first UI: nothing drawn on normal blocks, amber attention, highlighted red disruption areas with word labels; rain cells, congestion corridors, incident clusters; pulse heart; ≤ 4 alerts; details in drawers; 3-second polling | M8-M11 `frontend/` | Manual + build check | Opening screen | ✅ Done |
+| 5 | Plain-language summary: what's happening and why it matters | Template summary (always available) + optional grounded LLM rewrite with numeric grounding validator | M6 `backend/app/ai/` | `test_ai_agent_simulation.py` | "Right now" panel | ✅ Done |
 | 6 | *Optional:* threshold alerting | Monitoring agent opens/resolves alerts with observed vs possible-link wording | M12 `backend/app/agent/` | `test_ai_agent_simulation.py` | Alert appears when the Walled City (C2-9) goes RED | ✅ Done |
 | 7 | *Optional:* historical replay | Replays a recorded storm from the stored archive minute by minute through the same analysis engine and agent; scrubber + key moments | M13 `backend/app/simulation/replay.py`, `frontend/src/components/ReplayBar.tsx` | `test_replay.py` | "Replay storm" → play / jump to "Possible relationship found" | ✅ Done |
 
@@ -25,9 +25,9 @@ when the feature has been built and verified (automated tests + manual run in th
 |---|---|---|---|---|---|
 | Public or synthetic data | Deterministic synthetic city model (default); optional Open-Meteo weather/air-quality (free, no key) | M2, M5 | `test_resilience.py` | Feed chips show SIMULATED / LIVE honestly | ✅ Done |
 | Degrade gracefully if a feed is missing or delayed | Per-feed status (LIVE, SIMULATED, FALLBACK, DELAYED, STALE, UNAVAILABLE); live→synthetic fallback; analysis says "cannot assess" instead of guessing | M5 `backend/app/services/feed_manager.py` | `test_resilience.py` | Demo panel → Weather → Outage | ✅ Done |
-| Privacy — no identifying individuals | Incidents carry only category, coarse location, time; no names/phones; normalizer drops unknown fields | M3 | `test_normalization.py::test_incident_personal_fields_are_dropped` | FILE_GUIDE / Q&A | ✅ Done |
+| Privacy: no identifying individuals | Incidents carry only category, coarse location, time; no names/phones; normalizer drops unknown fields | M3 | `test_normalization.py::test_incident_personal_fields_are_dropped` | FILE_GUIDE / Q&A | ✅ Done |
 | Understandable in ~10 seconds | Default view = Jaipur map in 5 × 5 districts of 3 × 3 blocks; only unusual blocks are tinted, one label per hotspot, ≤ 4 grouped alerts; area panel answers in 10 seconds with "Explain in detail" behind a button | M9 | Manual 10-second check | Opening screen | ✅ Done |
-| Epistemic honesty — possible links, not causes | Fixed vocabulary ("may be related", "possible link"); banned causal phrases enforced in templates **and** LLM validator; UI labels OBSERVED vs POSSIBLE LINK vs NOT CONFIRMED CAUSE | M4, M6, M10 | `test_ai_agent_simulation.py::test_causal_language_rejected` | "Why this flag?" panel | ✅ Done |
+| Epistemic honesty: possible links, not causes | Fixed vocabulary ("may be related", "possible link"); banned causal phrases enforced in templates **and** LLM validator; UI labels OBSERVED vs POSSIBLE LINK vs NOT CONFIRMED CAUSE | M4, M6, M10 | `test_ai_agent_simulation.py::test_causal_language_rejected` | "Why this flag?" panel | ✅ Done |
 
 ## 3. Hackathon Scope (PDF §8)
 
@@ -43,9 +43,9 @@ when the feature has been built and verified (automated tests + manual run in th
 
 | Innovation | Implementation | Demo visibility | Fallback if incomplete |
 |---|---|---|---|
-| AI/ML — anomaly detection & time-series correlation | Robust z-score (median/MAD) alongside % deviation; Pearson co-movement over the rolling window with lead/lag check | "How unusual?" column; "co-movement r=0.9" in evidence | Rule thresholds alone still flag anomalies |
-| NLP — plain-language narrative | Claude API (`messages.parse`, Pydantic schema) rewrites structured facts; validator rejects invented numbers or causal claims | "Right now" panel badge: *AI-assisted* vs *Rule-based* | Deterministic template text (always generated first) |
-| Agentic AI — continuous monitoring, proactive flags | Monitoring agent runs every tick: checks feed quality → anomalies → related signals → window → opens/updates/resolves alerts; exposes its step trace | Alerts list + "Monitoring agent — last check" trace | Zone status colours still show the same information |
+| AI/ML: anomaly detection & time-series correlation | Robust z-score (median/MAD) alongside % deviation; Pearson co-movement over the rolling window with lead/lag check | "How unusual?" column; "co-movement r=0.9" in evidence | Rule thresholds alone still flag anomalies |
+| NLP: plain-language narrative | Optional LLM API (`messages.parse`, Pydantic schema) rewrites structured facts; validator rejects invented numbers or causal claims | "Right now" panel badge: *AI-assisted* vs *Rule-based* | Deterministic template text (always generated first) |
+| Agentic AI: continuous monitoring, proactive flags | Monitoring agent runs every tick: checks feed quality → anomalies → related signals → window → opens/updates/resolves alerts; exposes its step trace | Alerts list + "Monitoring agent, last check" trace | Zone status colours still show the same information |
 | Creative pulse visualization | Heartbeat strip whose rhythm/colour reflects city state; zone × time heat-map timeline; live narrative ticker | Top bar + bottom timeline | Static status chips |
 | Geospatial / IoT | Simulated traffic sensors, rain gauges, air monitors, drain water-level sensors on the map; they feed the **same** normalizer | "Sensors" map layer | Zone-level aggregates only |
 

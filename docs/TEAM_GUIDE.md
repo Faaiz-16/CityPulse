@@ -1,4 +1,4 @@
-# CityPulse — Team Guide
+# CityPulse: Team Guide
 
 A plain-language guide for every team member. Read this once and you should be able to explain
 any part of CityPulse to a judge, run it, and change it safely. Deeper detail lives in
@@ -10,15 +10,15 @@ any part of CityPulse to a judge, run it, and change it safely. Deeper detail li
 
 CityPulse is a website that shows how a city is doing *right now*. It combines five kinds of
 civic data, spots anything unusual, notices when unusual things might be connected, and explains
-it all in plain words on a map. Tagline: **"Understand what's happening in your city — at a
+it all in plain words on a map. Tagline: **"Understand what's happening in your city at a
 glance."**
 
 ## 2. The problem statement (AmiHacks Track B)
 
-Civic data — weather, traffic, transit, complaints, air quality — exists but is scattered across
+Civic data (weather, traffic, transit, complaints, air quality) exists but is scattered across
 disconnected feeds with different formats, clocks and update rates. The brief asks for a system
 that fuses at least three feeds into a common model, detects anomalies or correlations, shows a
-live glanceable map/dashboard, and writes a plain-language summary — while working with public
+live glanceable map/dashboard, and writes a plain-language summary, while working with public
 or synthetic data, degrading gracefully when feeds fail, protecting privacy, being readable in
 ~10 seconds, and **never presenting a possible link as a confirmed cause**.
 
@@ -53,7 +53,7 @@ Built with **React** (a library for building UIs out of reusable components) and
 (JavaScript with types, which catches mistakes early), bundled by **Vite**, styled with
 **Tailwind CSS** (utility classes like `p-3` for padding).
 
-- **Map (the hero):** Jaipur fills the screen in 5 × 5 districts (A–E across, 1–5 down), each split
+- **Map (the hero):** Jaipur fills the screen in 5 × 5 districts (A-E across, 1-5 down), each split
   into 3 × 3 blocks.
   Normal areas draw nothing; unusual areas get a soft amber or red tint; one label per
   hotspot. Rain cells, congestion drawn on real roads, incident icons (only when unusual), an
@@ -62,11 +62,11 @@ Built with **React** (a library for building UIs out of reusable components) and
   (LIVE / DEMO / REPLAY) and clock, one data-health chip, and the Insights / Replay / Demo buttons.
 - **Active alerts:** at most four, grouped per hotspot ("Walled City + 12 nearby blocks"); click one
   to jump there.
-- **Area panel:** click an area — first a 10-second answer (status, "What you'd notice", "What to
+- **Area panel:** click an area: first a 10-second answer (status, "What you'd notice", "What to
   do"); **Explain in detail** shows what's happening, the evidence and the possible relationship,
   and "Show the data behind this" has the metrics, "Why these flags?", a chart and the agent.
 - **Drawers:** *Demo* (scenario presets with pause/speed, custom sliders, feed failures) and
-  *Insights* (summary, agent alerts, status heat-map, live signal stream) — closed by default.
+  *Insights* (summary, agent alerts, status heat-map, live signal stream), closed by default.
 - **Replay bar:** in replay mode, controls to play back a recorded storm.
 
 Data arrives by **polling**: the browser asks `/api/dashboard` every 3 seconds.
@@ -92,19 +92,19 @@ Entry point: `backend/app/main.py`. The orchestrator: `backend/app/services/pipe
 
 ## 8. The database
 
-**SQLite** — a database stored in one file (`backend/data/citypulse.db`), no server needed. We
+**SQLite**: a database stored in one file (`backend/data/citypulse.db`), no server needed. We
 talk to it through **SQLAlchemy** so we could switch to PostgreSQL by changing one setting. It
 stores 3 days of history (to learn "normal"), the recorded storm for replay, live readings,
-alerts and status snapshots. The live analysis doesn't depend on it — if the database breaks,
+alerts and status snapshots. The live analysis doesn't depend on it: if the database breaks,
 the map keeps working. Details: [DATABASE.md](DATABASE.md).
 
-## 9. Data flow — one tick, step by step
+## 9. Data flow: one tick, step by step
 
 1. **Simulation step:** if a scenario is running, apply any due event (e.g. start rain).
 2. **Poll feeds:** each feed that is due fetches its raw data (with fallbacks if it fails).
 3. **Normalize:** raw → common records; bad records rejected with reasons.
 4. **Store:** add to the in-memory rolling store (last 40 min); save to the database.
-5. **Analyse:** for every zone and metric — current vs baseline, anomaly? related signals?
+5. **Analyse:** for every zone and metric: current vs baseline, anomaly? related signals?
    risk? status?
 6. **Agent:** decide which alerts to open, update or resolve.
 7. **Summarize:** write the plain-language summary.
@@ -122,7 +122,7 @@ the map keeps working. Details: [DATABASE.md](DATABASE.md).
 | `"speedKph": 22.5, "freeFlowKph": 45` | `congestion_pct = 50 %` |
 | `"R-84A,R6C9,420,24/09/2026 15:07"` (CSV) | block C2-9 (depot code R6C9 → C2-9), `transit_delay_min = 7`, UTC time |
 | `"epochMs": 1790242200000` | `2026-09-24T09:30:00Z` |
-| Open311 report with `account_id`, `contact_phone` | anonymous report — personal fields dropped |
+| Open311 report with `account_id`, `contact_phone` | anonymous report, personal fields dropped |
 
 Every normalized record has the same fields: source, zone, UTC timestamp, metric, value, unit,
 data status (live / simulated / fallback). Code: `backend/app/normalization/`.
@@ -144,11 +144,11 @@ For each signal: **current value** (average over the last minute or so), **basel
 **% deviation** = (current − baseline) ÷ baseline × 100, and a **rule**:
 
 - Traffic: ≥ 30 % above normal · bus delays: ≥ 50 %
-- Rain: ≥ 7.6 mm/h (the meteorological definition of heavy rain — % change makes no sense when
+- Rain: ≥ 7.6 mm/h (the meteorological definition of heavy rain, % change makes no sense when
   normal is zero)
 - Street water: ≥ 15 cm · air quality: AQI ≥ 150 or ≥ 25 % above normal
-- Report counts: at least 3, ≥ 40 % above normal, **and** unlikely by chance (a **Poisson test**
-  — the maths of random arrivals — with a strict 0.1 % level)
+- Report counts: at least 3, ≥ 40 % above normal, **and** unlikely by chance (a **Poisson test**,
+  the maths of random arrivals, with a strict 0.1 % level)
 
 **Severity** grows with how far past the threshold it is. Example: traffic 147 vs normal 100 =
 +47 % → anomaly (moderate). All thresholds live in `backend/app/config.py`.
@@ -164,7 +164,7 @@ Two unusual signals are called a **possible relationship** only if:
 4. both inside the 10-minute window,
 5. the timing fits (traffic didn't start rising well before the rain).
 
-We then score the evidence (weak / moderate / strong), including **co-movement** — a
+We then score the evidence (weak / moderate / strong), including **co-movement**: a
 correlation number (−1 to 1) showing whether the two signals rose and fell together. The wording
 is always "may be related" + "not a confirmed cause". If a signal is unusual with nothing
 related, we say "insufficient evidence". Code: `backend/app/analysis/correlation.py`.
@@ -184,7 +184,7 @@ otherwise. Code: `backend/app/analysis/risk.py`.
 The **analysis engine is the source of truth; the AI only rephrases.**
 
 1. A **template** (fixed sentences filled with numbers) always writes the summary first.
-2. If an Anthropic API key is set, the facts are sent to Claude, which returns a friendlier
+2. If an Anthropic API key is set, the facts are sent to the LLM API, which returns a friendlier
    version in a fixed JSON shape.
 3. A **validator** throws that text away if it contains a number not in the facts, causal words
    ("caused", "due to"…) or a zone that isn't flagged.
@@ -210,7 +210,7 @@ Code: `backend/app/agent/monitor.py`.
   "step by step" option shows it building up live instead.
 - **Multi-event evening:** rain over the Walled City plus an unrelated jam in Vaishali Nagar (to
   show we don't blame the rain). Each storyline step ticks only when the analysis detects it.
-- **Feed faults:** outage, delay, malformed — for any feed.
+- **Feed faults:** outage, delay, malformed: for any feed.
 - **Historical replay:** yesterday's recorded storm, replayed minute by minute through the same
   engine and agent, labelled "ARCHIVE / not live".
 
@@ -219,8 +219,8 @@ Code: `backend/app/simulation/`. Script: [DEMO.md](DEMO.md).
 ## 18. The map
 
 **Leaflet** draws the map; the background tiles come from **OpenStreetMap** (free, no key),
-darkened with a CSS filter. Jaipur is split into **5 × 5 districts** (A1–E5, named after localities, e.g. Walled City = C2),
-each split into **3 × 3 blocks** of ~1.5 km (`C2-9`) — not official wards (the legend says so).
+darkened with a CSS filter. Jaipur is split into **5 × 5 districts** (A1-E5, named after localities, e.g. Walled City = C2),
+each split into **3 × 3 blocks** of ~1.5 km (`C2-9`): not official wards (the legend says so).
 Normal blocks draw nothing (the grid is off, `SHOW_GRID` in `CityMap.tsx`); unusual blocks get a soft amber/red tint. Touching unusual
 blocks form one **hotspot** with one label ("Walled City · Possible disruption · 13 blocks"). The
 map is drawn on a canvas, so zooming stays smooth.
@@ -241,7 +241,7 @@ Code: `frontend/src/components/map/`.
 
 | Situation | What CityPulse does |
 |---|---|
-| Live API fails (timeout, error, rate limit, garbage) | Labelled FALLBACK estimate — never shown as live; retries after 60 s |
+| Live API fails (timeout, error, rate limit, garbage) | Labelled FALLBACK estimate, never shown as live; retries after 60 s |
 | Simulated feed fails | Last known values with age (FALLBACK), then UNAVAILABLE |
 | Feed goes quiet | DELAYED → STALE → UNAVAILABLE |
 | Data missing for a metric | "Not assessed" (not zero); relationships say what can't be checked |
@@ -255,7 +255,7 @@ Code: `backend/app/services/feed_manager.py`.
 - All inputs validated (Pydantic); zone and feed IDs checked against fixed lists.
 - CORS limited to our frontend's address.
 - Error responses never include stack traces.
-- No accounts or logins — the data is public information and contains no personal data. In a
+- No accounts or logins: the data is public information and contains no personal data. In a
   real deployment the demo (`/api/simulation/*`) endpoints should be protected or turned off.
 
 ## 22. Why these technologies
@@ -269,7 +269,7 @@ Code: `backend/app/services/feed_manager.py`.
 | Leaflet + OpenStreetMap | free, reliable maps, no API key |
 | Recharts, lucide icons | lightweight charts and accessible icons |
 | Rules + statistics, not heavy ML | explainable, works without training data, easy to defend |
-| Claude (optional) | only rephrases verified facts; always checked; never required |
+| LLM summary (optional) | only rephrases verified facts; always checked; never required |
 
 ## 23. How to run
 
@@ -295,32 +295,32 @@ Full guide: [SETUP.md](SETUP.md).
 
 ## 24. How to modify common things
 
-**Change a threshold** — edit `backend/app/config.py` or set an environment variable, e.g.
+**Change a threshold**: edit `backend/app/config.py` or set an environment variable, e.g.
 `CITYPULSE_TRAFFIC_THRESHOLD_PCT=25`. Restart the backend.
 
-**Change the rolling window** — `CITYPULSE_ROLLING_WINDOW_MINUTES=15`.
+**Change the rolling window**: `CITYPULSE_ROLLING_WINDOW_MINUTES=15`.
 
-**Add a relationship rule** — add a `Rule(...)` to `RULES` in `analysis/correlation.py`, then
+**Add a relationship rule**: add a `Rule(...)` to `RULES` in `analysis/correlation.py`, then
 add a headline and resident advice for its `id` to `_DISRUPTION_HEADLINES` and `_ADVICE` in
 `analysis/risk.py` (both are required). Add a test in `tests/test_analysis.py`.
 
 **Add a new metric / feed:**
-1. `data_sources/<feed>.py` — produce the raw payload (or call the real API).
-2. `normalization/normalizers.py` — a normalizer returning `CivicReading`s; add a valid range
+1. `data_sources/<feed>.py`: produce the raw payload (or call the real API).
+2. `normalization/normalizers.py`: a normalizer returning `CivicReading`s; add a valid range
    in `normalization/units.py`.
-3. `services/feed_manager.py` — add a `FeedSpec` to `FEEDS` with its interval.
-4. `analysis/metrics.py` — describe the metric (label, unit, mode, icon); add a rule in
+3. `services/feed_manager.py`: add a `FeedSpec` to `FEEDS` with its interval.
+4. `analysis/metrics.py`: describe the metric (label, unit, mode, icon); add a rule in
    `analysis/anomaly.py` if it isn't "info only".
-5. Frontend — add an icon in `utils/status.ts` (`METRIC_ICONS`) and the key to `CARD_ORDER`
+5. Frontend: add an icon in `utils/status.ts` (`METRIC_ICONS`) and the key to `CARD_ORDER`
    in `components/zone/ZonePanel.tsx`.
 6. Tests in `tests/test_normalization.py`.
 
-**Change the grid or city** — edit the grid constants and `LOCALITIES` in `geo/zones.py` (areas,
+**Change the grid or city**: edit the grid constants and `LOCALITIES` in `geo/zones.py` (areas,
 names, sensors and bus depot codes are derived from them), regenerate the roads with
 `scripts/build_jaipur_roads.py`, and widen the `zone_id` pattern in `api/routes.py`
 (`^[A-I][1-9]$`) if the grid grows. History regenerates automatically when the layout changes.
 
-**Change the look** — colours are CSS variables at the top of `frontend/src/index.css`; map
+**Change the look**: colours are CSS variables at the top of `frontend/src/index.css`; map
 colours in `components/map/mapColors.ts`.
 
 ## 25. Common errors
@@ -329,10 +329,10 @@ colours in `components/map/mapColors.ts`.
 |---|---|
 | `ModuleNotFoundError: No module named 'app'` | Run commands from inside `backend/` (or `python -m pytest` there). |
 | "Connecting to CityPulse…" forever | Backend isn't running on port 8000. |
-| `Address already in use` | Something else uses the port — stop it or pick another `--port`. |
+| `Address already in use` | Something else uses the port: stop it or pick another `--port`. |
 | Map has no streets | No internet for map tiles; everything else works. |
-| All zones flicker amber after editing thresholds | Thresholds too tight for the noise — revert or loosen; run the tests. |
+| All zones flicker amber after editing thresholds | Thresholds too tight for the noise: revert or loosen; run the tests. |
 | `KeyError` in `risk.py` after adding a rule | Add the rule's headline and advice to `_DISRUPTION_HEADLINES` and `_ADVICE`. |
-| Replay says "No recorded event found" | History wasn't generated — restart the backend once (or delete the database file). |
-| Tests fail after changing the city model | Some tests rely on its timing (every preset must reach its outcome within 240 s) — check `test_scenarios.py` and `test_ai_agent_simulation.py`. |
+| Replay says "No recorded event found" | History wasn't generated: restart the backend once (or delete the database file). |
+| Tests fail after changing the city model | Some tests rely on its timing (every preset must reach its outcome within 240 s): check `test_scenarios.py` and `test_ai_agent_simulation.py`. |
 | Stuck in a weird demo state | Demo → **Normal city**. |
