@@ -116,6 +116,9 @@ function LabelScale() {
 }
 
 // ------------------------------------------------------------------ grid
+/** Off for now: normal blocks draw nothing, so only amber and red blocks stand out. */
+const SHOW_GRID = false;
+
 
 /** District lines (5 × 5) are clear; block lines (3 × 3 inside each) are faint. Drawn once. */
 const GridLines = memo(function GridLines({ grid }: { grid: Grid }) {
@@ -518,9 +521,9 @@ export function CityMap({ boundaries, mapInfo, zones, sensors, layers, selectedZ
           {layers.air && <AirLayer grid={grid} air={air} badges={badges} />}
           {layers.rain && <RainLayer grid={grid} rain={rain} />}
           <BlockTints grid={grid} tints={tints} selected={selectedZone} />
-          <GridLines grid={grid} />
-          <GridRefs grid={grid} />
-          <DistrictNames grid={grid} names={districtNames} />
+          {SHOW_GRID && <GridLines grid={grid} />}
+          {SHOW_GRID && <GridRefs grid={grid} />}
+          {SHOW_GRID && <DistrictNames grid={grid} names={districtNames} />}
           <GridEvents grid={grid} zones={zones} onSelectZone={onSelectZone} />
           {layers.traffic && mapInfo && <TrafficLayer roads={mapInfo.roads} traffic={traffic} names={names} />}
         </>
