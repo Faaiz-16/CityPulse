@@ -304,12 +304,14 @@ File-by-file explanation: [docs/FILE_GUIDE.md](docs/FILE_GUIDE.md).
 
 ## Team
 
+**Exception Handler**
+
 | Name | Role | Contributions |
 |---|---|---|
-| [Member 1] | [e.g. Backend & data pipeline] | [e.g. feed simulation, normalization, common data model] |
-| [Member 2] | [e.g. Analysis & AI] | [e.g. baselines, anomalies, correlation, forecast, summaries, agent] |
-| [Member 3] | [e.g. Frontend & map] | [e.g. React UI, Leaflet map, drawers, replay] |
-| [Member 4] | [e.g. Testing, docs & pitch] | [e.g. tests, documentation, presentation, demo] |
+| Faaiz Ali | Team leader · full-stack developer | Leads the project; full-stack development across the backend (Python · FastAPI) and the frontend (React · TypeScript) |
+| Kunal Singh | Backend developer | Backend development (Python · FastAPI) |
+| Sarthak Bhadke | Backend developer | Backend development (Python · FastAPI) |
+| Siddhi Ingale | Frontend developer | Frontend development (React · TypeScript) |
 
 ## License
 

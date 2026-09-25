@@ -24,7 +24,7 @@ attention, red for disruption, violet for "possible link" and "what may happen n
 
 | # | Slide | Visual | Key message |
 |---|---|---|---|
-| 1 | **CityPulse** (title) | Map of Jaipur with the Walled City hotspot | Understand what's happening in your city at a glance. Team name and members |
+| 1 | **CityPulse** (title) | Map of Jaipur with the Walled City hotspot | Understand what's happening in your city at a glance. Team Exception Handler and its members |
 | 2 | **Problem statement**: "City data exists. The picture doesn't." | Five feeds, each with its own format problem, pointing at a confused resident | Data is scattered, not connected, and arrives too late. The real challenge is fusing it into one picture people can trust |
 | 3 | **Proposed solution**: "Five messy feeds in. One live, honest map out." | Feed icons → CityPulse → screenshot of the area panel; tiles for 225 blocks, 3 s, 10 s | One live map, updated every 3 s, readable in about 10 s |
 | 4 | **System architecture**: "One pipeline, every 3 seconds" | Diagram: 5 feeds → backend (feed manager, normalization, store, analysis engine, CityState, plus summary, agent, demo and replay) → REST API → React frontend | The API serves one pre-computed state; the same engine runs live, demo and replay. Same diagram as [`architecture.png`](architecture.png) |
@@ -45,6 +45,4 @@ hours · 128 automated tests.
 
 ## Before presenting
 
-- Replace `[Team name]` and `[Member 1…4]` on slides 1 and 10, and fill in the team table in the
-  [README](../README.md#team).
 - Keep a PDF copy of the deck in case the projector laptop can't open the `.pptx` file.

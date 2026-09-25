@@ -11,7 +11,7 @@ Say "possible link" and "may be related" every time; it's our strongest message.
 ## Brief introduction (0:00–0:30)
 
 **Slide 1: Title · 10 s**
-"Hi, we're [team name]. This is CityPulse, a live civic health dashboard for Jaipur, built for
+"Hi, we're team Exception Handler. This is CityPulse, a live civic health dashboard for Jaipur, built for
 Track B. It fuses five city data feeds into one map anyone can read in about ten seconds."
 
 **Slide 2: Problem statement · 20 s**
