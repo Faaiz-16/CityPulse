@@ -6,6 +6,7 @@ import { DemoDrawer } from "./components/drawers/DemoDrawer";
 import { InsightsDrawer } from "./components/drawers/InsightsDrawer";
 import { Header, type Mode } from "./components/Header";
 import { CityMap, type MapLayers } from "./components/map/CityMap";
+import { HoverCard } from "./components/map/HoverCard";
 import { LayerToggles, PulseLegend } from "./components/map/MapControls";
 import { ReplayBar } from "./components/ReplayBar";
 import { ZonePanel } from "./components/zone/ZonePanel";
@@ -152,6 +153,11 @@ export default function App() {
             Replay: {replay.error}
           </div>
         )}
+        {/* hovered block: always in the same place, under the demo status, never over the map */}
+        <div className={`absolute left-1/2 hidden -translate-x-1/2 md:block ${offline || replay.error ? "top-[180px]"
+          : demoActive && drawer !== "demo" ? "top-[128px]" : "top-[76px]"}`}>
+          <HoverCard zones={state.zones} />
+        </div>
 
         {/* left drawers */}
         {drawer && (
